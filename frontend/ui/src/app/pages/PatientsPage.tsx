@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { PatientService } from '../services/PatientService';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Search, User, AlertCircle, Activity, Heart, Thermometer, Phone, Loader2 } from 'lucide-react';
+import { Search, User, AlertCircle, Heart, Loader2 } from 'lucide-react';
 import { PatientsEnRouteIndicator } from '../components/PatientsEnRouteIndicator';
 
 const fadeInUp = {
@@ -13,27 +14,23 @@ const fadeInUp = {
   visible: { opacity: 1, y: 0 },
 };
 
-const stagger = {
-  visible: {
-    transition: {
-      staggerChildren: 0.03,
-    },
-  },
-};
-
 interface Patient {
   _id?: string;
   patient_id?: string;
+  name?: string;
   first_name?: string;
   last_name?: string;
   gender?: string;
   blood_type?: string;
+  blood_group?: string;
+  contact_number?: string;
   allergies?: string[];
   current_medications?: string[];
   is_active?: boolean;
 }
 
 export default function PatientsPage() {
+  const { t } = useLanguage();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,11 +58,15 @@ export default function PatientsPage() {
   // Filter patients based on search query
   const filteredPatients = patients.filter((patient) => {
     const query = searchQuery.toLowerCase();
-    const fullName = `${patient.first_name || ''} ${patient.last_name || ''}`.toLowerCase();
+    const fullName = (
+      patient.name ||
+      `${patient.first_name || ''} ${patient.last_name || ''}`
+    ).toLowerCase();
+    const bloodType = (patient.blood_type || patient.blood_group || '').toLowerCase();
     return (
       fullName.includes(query) ||
       (patient.patient_id || '').toLowerCase().includes(query) ||
-      (patient.blood_type || '').toLowerCase().includes(query)
+      bloodType.includes(query)
     );
   });
 
@@ -76,14 +77,25 @@ export default function PatientsPage() {
     return aActive - bActive;
   });
 
-  const getStatusColor = (active?: boolean) => {
-    return active !== false ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400';
-  };
-
   const stats = [
-    { label: 'Total Patients', value: patients.length, color: 'blue', icon: User },
-    { label: 'Active', value: patients.filter(p => p.is_active !== false).length, color: 'green', icon: Heart },
-    { label: 'Inactive', value: patients.filter(p => p.is_active === false).length, color: 'gray', icon: AlertCircle },
+    {
+      label: t('patients.total'),
+      value: patients.length,
+      icon: User,
+      iconClass: 'text-blue-600 dark:text-blue-400',
+    },
+    {
+      label: t('common.active'),
+      value: patients.filter((p) => p.is_active !== false).length,
+      icon: Heart,
+      iconClass: 'text-green-600 dark:text-green-400',
+    },
+    {
+      label: t('common.inactive'),
+      value: patients.filter((p) => p.is_active === false).length,
+      icon: AlertCircle,
+      iconClass: 'text-gray-600 dark:text-gray-400',
+    },
   ];
 
   return (
@@ -96,9 +108,9 @@ export default function PatientsPage() {
           className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-            Patient Records
+            {t('patients.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Search and view patient information</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('patients.subtitle')}</p>
         </motion.div>
 
         {/* Stats */}
@@ -108,7 +120,7 @@ export default function PatientsPage() {
               <motion.div key={index} whileHover={{ scale: 1.05 }} transition={{ type: 'spring', stiffness: 300 }}>
                 <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all">
                   <CardContent className="pt-6 text-center relative">
-                    <stat.icon className={`w-8 h-8 mx-auto mb-2 text-${stat.color}-600 dark:text-${stat.color}-400`} />
+                    <stat.icon className={`w-8 h-8 mx-auto mb-2 ${stat.iconClass}`} />
                     <p className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
                     <p className="text-3xl font-bold dark:text-white">{stat.value}</p>
                   </CardContent>
@@ -131,7 +143,7 @@ export default function PatientsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="Search by name, ID, or blood type..."
+                  placeholder={t('patients.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 py-6 text-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
@@ -143,7 +155,7 @@ export default function PatientsPage() {
                   animate={{ opacity: 1 }}
                   className="mt-3 text-sm text-gray-600 dark:text-gray-400"
                 >
-                  Found {filteredPatients.length} patient{filteredPatients.length !== 1 ? 's' : ''}
+                  {t('common.found')} {filteredPatients.length} {t(filteredPatients.length !== 1 ? 'patients.itemsPlural' : 'patients.itemSingle')}
                 </motion.p>
               )}
             </CardContent>
@@ -154,7 +166,7 @@ export default function PatientsPage() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading patients...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('patients.loading')}</p>
           </div>
         )}
 
@@ -164,7 +176,7 @@ export default function PatientsPage() {
             <CardContent className="py-8 text-center">
               <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-600 dark:text-red-400" />
               <p className="text-lg text-red-700 dark:text-red-400 font-medium">{error}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Please try again or contact support</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{t('common.tryAgain')}</p>
             </CardContent>
           </Card>
         )}
@@ -179,8 +191,8 @@ export default function PatientsPage() {
               <Card className="shadow-lg dark:bg-gray-900 dark:border-gray-800">
                 <CardContent className="py-16 text-center">
                   <User className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                  <p className="text-xl text-gray-500 dark:text-gray-400">No patients found</p>
-                  <p className="text-gray-400 dark:text-gray-500 mt-2">Try adjusting your search query</p>
+                  <p className="text-xl text-gray-500 dark:text-gray-400">{t('patients.empty')}</p>
+                  <p className="text-gray-400 dark:text-gray-500 mt-2">{t('common.trySearch')}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -191,43 +203,46 @@ export default function PatientsPage() {
                     whileHover={{ y: -8, scale: 1.02 }}
                     transition={{ type: 'spring', stiffness: 300 }}
                   >
-                    <Link to={`/patients/${patient._id || patient.patient_id}`}>
-                      <Card className="hover:shadow-2xl transition-all cursor-pointer h-full dark:bg-gray-900 dark:border-gray-800 group">
+                    <Link to={`/patients/${patient.patient_id || patient._id}`}>
+                      <Card className="hover:shadow-2xl transition-all cursor-pointer h-full dark:bg-gradient-to-br dark:from-[#1f1a1a] dark:to-[#2b211f] dark:border-gray-800 group">
                         <CardContent className="pt-6 relative">
                           {/* Header */}
-                          <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3 mb-4">
+                            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center border border-blue-200 dark:border-blue-800/60">
+                              <User className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                            </div>
                             <div className="flex-1">
                               <h3 className="font-bold text-lg mb-1 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                {patient.first_name} {patient.last_name}
+                                {patient.name || `${patient.first_name || ''} ${patient.last_name || ''}`.trim() || t('patient.unnamed')}
                               </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">{patient.patient_id || 'N/A'}</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">{patient.patient_id || t('common.na')}</p>
                             </div>
                           </div>
 
                           {/* Patient Info */}
                           <div className="space-y-3 mb-4">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600 dark:text-gray-400">Gender</span>
-                              <span className="font-medium dark:text-white">{patient.gender || 'Not specified'}</span>
+                              <span className="text-gray-600 dark:text-gray-400">{t('patient.gender')}</span>
+                              <span className="font-medium dark:text-white">{patient.gender || t('patients.notSpecified')}</span>
                             </div>
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600 dark:text-gray-400">Blood Type</span>
-                              <span className="font-medium dark:text-white">{patient.blood_type || 'Not specified'}</span>
+                              <span className="text-gray-600 dark:text-gray-400">{t('patients.bloodType')}</span>
+                              <span className="font-medium dark:text-white">{patient.blood_type || patient.blood_group || t('patients.notSpecified')}</span>
                             </div>
                           </div>
 
                           {/* Allergies */}
                           {patient.allergies && patient.allergies.length > 0 && (
                             <div className="mb-4">
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Allergies</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">{t('patient.allergies')}</p>
                               <div className="flex flex-wrap gap-1">
                                 {patient.allergies.slice(0, 2).map((allergy, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
+                                  <Badge key={idx} variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-200">
                                     {allergy}
                                   </Badge>
                                 ))}
                                 {patient.allergies.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
+                                  <Badge variant="outline" className="text-xs dark:border-gray-700 dark:text-gray-200">
                                     +{patient.allergies.length - 2} more
                                   </Badge>
                                 )}
@@ -238,7 +253,7 @@ export default function PatientsPage() {
                           {/* Medications */}
                           {patient.current_medications && patient.current_medications.length > 0 && (
                             <div className="mb-4">
-                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">Current Medications</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500 mb-1">{t('patient.currentMeds')}</p>
                               <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
                                 {patient.current_medications.join(', ')}
                               </p>
@@ -250,7 +265,7 @@ export default function PatientsPage() {
                             <Badge 
                               className={patient.is_active !== false ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700'}
                             >
-                              {patient.is_active !== false ? 'Active' : 'Inactive'}
+                              {patient.is_active !== false ? t('common.active') : t('common.inactive')}
                             </Badge>
                           </div>
                         </CardContent>

@@ -17,6 +17,7 @@ import PatientsPage from './pages/PatientsPage';
 import PatientDetailPage from './pages/PatientDetailPage';
 import TestReportPage from './pages/TestReportPage';
 import NursesPage from './pages/NursesPage';
+import NurseDetailPage from './pages/NurseDetailPage';
 import ProfilePage from './pages/ProfilePage';
 import { AuthDialog } from './components/AuthDialog';
 import { Activity, Users, Building2, UserCheck, Stethoscope, Moon, Sun, Languages, Heart, User, LogOut, KeyRound } from 'lucide-react';
@@ -41,6 +42,7 @@ import { toast } from 'sonner';
 
 function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { changePassword } = useAuth();
+  const { t } = useLanguage();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -107,18 +109,18 @@ function ChangePasswordDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 function Navigation() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { isAuthenticated, user, logout } = useAuth();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const navItems = [
-    { path: '/triage', label: 'Triage', icon: UserCheck },
-    { path: '/hospital-overview', label: 'Overview', icon: Building2 },
-    { path: '/doctors', label: 'Doctors', icon: Stethoscope },
-    { path: '/nurses', label: 'Nurses', icon: Heart },
-    { path: '/patients', label: 'Patients', icon: Users },
+    { path: '/triage', label: t('nav.triage'), icon: UserCheck },
+    { path: '/hospital-overview', label: t('nav.overview'), icon: Building2 },
+    { path: '/doctors', label: t('nav.doctors'), icon: Stethoscope },
+    { path: '/nurses', label: t('nav.nurses'), icon: Heart },
+    { path: '/patients', label: t('nav.patients'), icon: Users },
   ];
 
   const languages: { code: Language; label: string }[] = [
@@ -189,16 +191,16 @@ function Navigation() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="dark:border-gray-700">
                     <User className="w-4 h-4 mr-2" />
-                    <span className="max-w-24 truncate">{user?.name || 'Profile'}</span>
+                    <span className="max-w-24 truncate">{user?.name || t('nav.profile')}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link to="/profile">Profile</Link>
+                    <Link to="/profile">{t('nav.profile')}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setChangePasswordOpen(true)}>
                     <KeyRound className="w-4 h-4 mr-2" />
-                    Change Password
+                    {t('nav.changePassword')}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -209,7 +211,7 @@ function Navigation() {
                     className="text-red-600"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    {t('nav.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -218,12 +220,12 @@ function Navigation() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <a href="/#about" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">About</a>
-              <a href="/#ethics" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">Ethics</a>
-              <a href="/#regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">Regulations</a>
-              <Button size="sm" onClick={() => { setAuthMode('login'); setAuthDialogOpen(true); }}>Login</Button>
+              <a href="/#about" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.about')}</a>
+              <a href="/#ethics" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.ethics')}</a>
+              <a href="/#regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.regulations')}</a>
+              <Button size="sm" onClick={() => { setAuthMode('login'); setAuthDialogOpen(true); }}>{t('auth.login')}</Button>
               <Button size="sm" variant="outline" onClick={() => { setAuthMode('signup'); setAuthDialogOpen(true); }}>
-                Sign Up
+                {t('auth.signup')}
               </Button>
               <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} defaultMode={authMode} />
             </div>
@@ -258,6 +260,7 @@ function AppContent() {
           <Route path="/doctors" element={<ProtectedRoute><DoctorsPage /></ProtectedRoute>} />
           <Route path="/doctors/:id" element={<ProtectedRoute><DoctorDetailPage /></ProtectedRoute>} />
           <Route path="/nurses" element={<ProtectedRoute><NursesPage /></ProtectedRoute>} />
+          <Route path="/nurses/:id" element={<ProtectedRoute><NurseDetailPage /></ProtectedRoute>} />
           <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
           <Route path="/patients/:id" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
           <Route path="/patients/:id/test-reports" element={<ProtectedRoute><TestReportPage /></ProtectedRoute>} />

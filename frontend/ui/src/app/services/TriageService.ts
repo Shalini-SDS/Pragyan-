@@ -7,6 +7,7 @@ import APIClient from '../utils/apiClient';
 
 export interface TriageData {
   patient_id: string;
+  gender?: 'Male' | 'Female' | 'Other';
   blood_pressure: string;
   heart_rate: number;
   temperature: number;

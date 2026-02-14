@@ -142,6 +142,7 @@ class TriageSchema(Schema):
     hospital_id = fields.Str(required=True)
     patient_id = fields.Str(required=True)
     nurse_id = fields.Str(required=True)
+    gender = fields.Str(validate=validate.OneOf(["Male", "Female", "Other"]), allow_none=True)
     
     # Vital Signs
     blood_pressure = fields.Str(required=True)  # "120/80"

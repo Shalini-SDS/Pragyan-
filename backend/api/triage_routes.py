@@ -61,38 +61,47 @@ def predict_triage_assessment(triage_data):
         # Calculate risk score based on vital signs
         risk_score = 0.0
         severity = triage_data.get('severity', 5)
+        reasoning = []
         
         # Heart rate assessment
         hr = vitals['heart_rate']
         if hr < 60 or hr > 100:
             risk_score += 0.1
+            reasoning.append("Abnormal heart rate")
         if hr < 40 or hr > 120:
             risk_score += 0.2
+            reasoning.append("Severely abnormal heart rate")
             
         # BP assessment
         sys_bp = vitals['blood_pressure_systolic']
         dias_bp = vitals['blood_pressure_diastolic']
         if sys_bp > 140 or dias_bp > 90:
             risk_score += 0.15
+            reasoning.append("Elevated blood pressure")
         if sys_bp > 180 or dias_bp > 120:
             risk_score += 0.2
+            reasoning.append("Critical blood pressure")
             
         # Temperature assessment
         temp = vitals['temperature']
         if temp > 38.5 or temp < 36:
             risk_score += 0.15
+            reasoning.append("Temperature out of normal range")
             
         # Respiratory rate assessment
         rr = vitals['respiratory_rate']
         if rr > 24 or rr < 12:
             risk_score += 0.1
+            reasoning.append("Abnormal respiratory rate")
             
         # Oxygen saturation assessment
         o2 = vitals['oxygen_saturation']
         if o2 < 95:
             risk_score += 0.2
+            reasoning.append("Low oxygen saturation")
         if o2 < 90:
             risk_score += 0.2
+            reasoning.append("Critical oxygen saturation")
             
         # Severity factor
         risk_score += (severity - 5) * 0.03
@@ -110,8 +119,10 @@ def predict_triage_assessment(triage_data):
         else:
             priority_level = "Low"
         
-        # Predict department based on symptoms
+        # Predict department based on symptoms + profile context
         symptoms = [s.lower() for s in triage_data.get('symptoms', [])]
+        previous_conditions = [c.lower() for c in triage_data.get('previous_conditions', [])]
+        gender = str(triage_data.get('gender', 'Other')).lower()
         predicted_department = "General Medicine"  # default
         recommended_tests = ["CBC", "Blood Tests"]
         
@@ -119,33 +130,80 @@ def predict_triage_assessment(triage_data):
         if any(s in symptoms for s in ['chest pain', 'breathing difficulty', 'shortness of breath', 'dyspnea']):
             predicted_department = "Cardiology/Pulmonology"
             recommended_tests.extend(["ECG", "Chest X-ray", "Troponin"])
+            reasoning.append("Respiratory/cardiac symptoms detected")
             
         # Head/neuro symptoms
         elif any(s in symptoms for s in ['headache', 'dizziness', 'confusion', 'seizure', 'unconscious']):
             predicted_department = "Neurology"
             recommended_tests.extend(["CT Scan", "Neuro Exam", "EEG"])
+            reasoning.append("Neurological symptoms detected")
             
         # Abdominal symptoms
         elif any(s in symptoms for s in ['abdominal pain', 'nausea', 'vomiting', 'diarrhea']):
             predicted_department = "Gastroenterology"
             recommended_tests.extend(["Abdominal Ultrasound", "Blood Work"])
+            reasoning.append("Gastrointestinal symptoms detected")
             
         # Trauma/Injury
         elif any(s in symptoms for s in ['injury', 'trauma', 'fracture', 'bleeding']):
             predicted_department = "Emergency/Orthopedics"
             recommended_tests.extend(["X-ray", "CT Scan"])
+            reasoning.append("Trauma-related symptoms detected")
             
         # Fever/Infection
         elif temp > 38.5:
             predicted_department = "Internal Medicine/Infectious Disease"
             recommended_tests.extend(["Blood Culture", "Urine Culture", "Imaging"])
+            reasoning.append("Fever/infection pattern detected")
+
+        # Condition-aware routing adjustments
+        if any(c in previous_conditions for c in ['heart disease', 'hypertension']) and any(
+            s in symptoms for s in ['chest pain', 'shortness of breath', 'palpitations']
+        ):
+            predicted_department = "Cardiology"
+            risk_score = min(1.0, risk_score + 0.1)
+            recommended_tests.extend(["Echocardiogram"])
+            reasoning.append("Cardiac history with cardiac symptoms")
+
+        if any(c in previous_conditions for c in ['asthma', 'copd']) and any(
+            s in symptoms for s in ['shortness of breath', 'wheezing', 'breathing difficulty']
+        ):
+            predicted_department = "Pulmonology"
+            risk_score = min(1.0, risk_score + 0.1)
+            recommended_tests.extend(["Spirometry", "ABG"])
+            reasoning.append("Pulmonary history with respiratory symptoms")
+
+        if any(c in previous_conditions for c in ['diabetes', 'kidney disease']) and temp > 38.5:
+            predicted_department = "Internal Medicine/Infectious Disease"
+            risk_score = min(1.0, risk_score + 0.08)
+            recommended_tests.extend(["Renal Function Test", "Blood Glucose"])
+            reasoning.append("Comorbidity raises infection risk")
+
+        if gender == 'female' and any(s in symptoms for s in ['pelvic pain', 'lower abdominal pain']):
+            predicted_department = "Gynecology"
+            recommended_tests.extend(["Pelvic Ultrasound", "Urine Pregnancy Test"])
+            reasoning.append("Female-specific pelvic symptoms detected")
+
+        # Re-evaluate priority after condition-based adjustments
+        if risk_score >= 0.8:
+            priority_level = "Critical"
+        elif risk_score >= 0.6:
+            priority_level = "High"
+        elif risk_score >= 0.4:
+            priority_level = "Medium"
+        else:
+            priority_level = "Low"
+
+        # Remove duplicate tests while preserving order
+        deduped_tests = list(dict.fromkeys(recommended_tests))
         
         return {
             "predicted_department": predicted_department,
             "priority_level": priority_level,
             "risk_score": round(risk_score, 3),
             "confidence": round(0.75 + (risk_score * 0.25), 3),
-            "recommended_tests": recommended_tests,
+            "recommended_tests": deduped_tests,
+            "reasoning": reasoning if reasoning else ["Assessment based on vitals and symptom profile"],
             "vitals_analysis": vitals
         }
         
@@ -157,6 +215,7 @@ def predict_triage_assessment(triage_data):
             "risk_score": 0.5,
             "confidence": 0.5,
             "recommended_tests": ["CBC", "Blood Tests"],
+            "reasoning": ["Fallback assessment used due to prediction engine error"],
             "error": str(e)
         }
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { NurseService } from '../services/NurseService';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -25,6 +27,7 @@ const stagger = {
 interface Nurse {
   _id?: string;
   staff_id?: string;
+  name?: string;
   first_name?: string;
   last_name?: string;
   department?: string;
@@ -36,6 +39,7 @@ interface Nurse {
 
 export default function NursesPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +73,10 @@ export default function NursesPage() {
     }
     
     const query = searchQuery.toLowerCase();
-    const fullName = `${nurse.first_name || ''} ${nurse.last_name || ''}`.toLowerCase();
+    const fullName = (
+      nurse.name ||
+      `${nurse.first_name || ''} ${nurse.last_name || ''}`
+    ).toLowerCase();
     return (
       fullName.includes(query) ||
       (nurse.staff_id || '').toLowerCase().includes(query) ||
@@ -96,9 +103,9 @@ export default function NursesPage() {
           className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-            Nurse Directory
+            {t('nurses.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Manage nurse assignments and patient care</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('nurses.subtitle')}</p>
         </motion.div>
 
         {/* Search Bar */}
@@ -114,7 +121,7 @@ export default function NursesPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="Search by name, department, or ID..."
+                  placeholder={t('nurses.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 py-6 text-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
@@ -126,7 +133,7 @@ export default function NursesPage() {
                   animate={{ opacity: 1 }}
                   className="mt-3 text-sm text-gray-600 dark:text-gray-400"
                 >
-                  Found {filteredNurses.length} nurse{filteredNurses.length !== 1 ? 's' : ''}
+                  {t('common.found')} {filteredNurses.length} {t(filteredNurses.length !== 1 ? 'nurses.itemsPlural' : 'nurses.itemSingle')}
                 </motion.p>
               )}
             </CardContent>
@@ -137,7 +144,7 @@ export default function NursesPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading nurses...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">{t('nurses.loading')}</span>
           </div>
         )}
 
@@ -159,14 +166,14 @@ export default function NursesPage() {
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Heart className="w-8 h-8 mx-auto mb-2 text-pink-600 dark:text-pink-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Nurses</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('nurses.total')}</p>
                 <p className="text-2xl font-bold dark:text-white">{nurses.length}</p>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Users className="w-8 h-8 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.active')}</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {nurses.filter((n) => n.is_active !== false).length}
                 </p>
@@ -175,7 +182,7 @@ export default function NursesPage() {
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Heart className="w-8 h-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Found</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.found')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredNurses.length}
                 </p>
@@ -190,15 +197,16 @@ export default function NursesPage() {
               <Card className="shadow-lg dark:bg-gray-900 dark:border-gray-800">
                 <CardContent className="py-16 text-center">
                   <Heart className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                  <p className="text-xl text-gray-500 dark:text-gray-400">No nurses found</p>
-                  <p className="text-gray-400 dark:text-gray-500 mt-2">Try adjusting your search query</p>
+                  <p className="text-xl text-gray-500 dark:text-gray-400">{t('nurses.empty')}</p>
+                  <p className="text-gray-400 dark:text-gray-500 mt-2">{t('common.trySearch')}</p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredNurses.map((nurse) => (
-                  <Card key={nurse._id || nurse.staff_id} className="hover:shadow-xl transition-all dark:bg-gray-900 dark:border-gray-800 group">
-                    <CardContent className="pt-6">
+                  <Link key={nurse._id || nurse.staff_id} to={`/nurses/${nurse.staff_id}`}>
+                    <Card className="hover:shadow-xl transition-all dark:bg-gray-900 dark:border-gray-800 group cursor-pointer">
+                      <CardContent className="pt-6">
                       <div className="text-center">
                         {/* Nurse Avatar */}
                         <div className="relative inline-block mb-4">
@@ -214,7 +222,7 @@ export default function NursesPage() {
 
                         {/* Nurse Info */}
                         <h3 className="font-bold text-lg mb-1 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">
-                          {nurse.first_name} {nurse.last_name}
+                          {nurse.name || `${nurse.first_name || ''} ${nurse.last_name || ''}`.trim() || t('nurse.unnamed')}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{nurse.staff_id}</p>
 
@@ -230,7 +238,7 @@ export default function NursesPage() {
                         {nurse.shift && (
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 capitalize">
                             <Clock className="w-4 h-4 inline mr-1" />
-                            {nurse.shift} Shift
+                            {nurse.shift} {t('nurse.shift')}
                           </p>
                         )}
 
@@ -238,17 +246,18 @@ export default function NursesPage() {
                         <div className="mt-4 pt-4 border-t dark:border-gray-800">
                           {nurse.license_number ? (
                             <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
-                              ✓ Licensed
+                              {t('nurses.licensed')}
                             </Badge>
                           ) : (
                             <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800">
-                              No License Info
+                              {t('nurses.noLicense')}
                             </Badge>
                           )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             )}

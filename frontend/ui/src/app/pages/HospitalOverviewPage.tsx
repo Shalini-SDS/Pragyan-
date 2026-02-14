@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { HospitalService } from '../services/HospitalService';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -33,6 +34,7 @@ interface HospitalOverviewData {
 }
 
 export default function HospitalOverviewPage() {
+  const { t } = useLanguage();
   const [hospitalData, setHospitalData] = useState<HospitalOverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export default function HospitalOverviewPage() {
         setError(null);
       } catch (err) {
         console.error('Failed to fetch hospital data:', err);
-        setError('Failed to load hospital data. Please try again.');
+        setError(t('overview.errorLoad'));
         setHospitalData(null);
       } finally {
         setLoading(false);
@@ -66,6 +68,7 @@ export default function HospitalOverviewPage() {
 
   // Determine emergency status based on bed availability
   const emergencyStatus = availableBeds <= 10 ? 'Critical' : availableBeds <= 30 ? 'Busy' : 'Normal';
+  const emergencyStatusLabel = t(`overview.status.${emergencyStatus.toLowerCase()}`);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -117,16 +120,16 @@ export default function HospitalOverviewPage() {
           className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Hospital Overview
+            {t('overview.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Real-time hospital status and resource monitoring</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('overview.subtitle')}</p>
         </motion.div>
 
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading hospital data...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t('overview.loading')}</p>
           </div>
         )}
 
@@ -176,16 +179,16 @@ export default function HospitalOverviewPage() {
                     />
                   </motion.div>
                   <div>
-                    <h3 className="font-bold text-lg dark:text-white">Hospital Status: {emergencyStatus}</h3>
+                    <h3 className="font-bold text-lg dark:text-white">{t('overview.hospitalStatus')}: {emergencyStatusLabel}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {availableBeds} beds available • {occupiedBeds} beds occupied
+                      {availableBeds} {t('overview.bedsAvailable')} • {occupiedBeds} {t('overview.bedsOccupied')}
                     </p>
                   </div>
                 </div>
                 <Badge
                   className={`${getStatusColor(emergencyStatus)} text-white px-4 py-2 text-base`}
                 >
-                  {emergencyStatus}
+                  {emergencyStatusLabel}
                 </Badge>
               </div>
             </CardContent>
@@ -199,11 +202,11 @@ export default function HospitalOverviewPage() {
               <CardContent className="pt-6 relative">
                 <div className="flex items-center justify-between mb-2">
                   <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                  <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Live</Badge>
+                  <Badge className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">{t('overview.live')}</Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Patients</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('overview.totalPatients')}</p>
                 <p className="text-3xl font-bold dark:text-white">{totalAdmitted}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Currently in hospital</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('overview.currentlyInHospital')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -213,11 +216,11 @@ export default function HospitalOverviewPage() {
               <CardContent className="pt-6 relative">
                 <div className="flex items-center justify-between mb-2">
                   <Stethoscope className="w-8 h-8 text-red-600 dark:text-red-400" />
-                  <Badge className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">Staff</Badge>
+                  <Badge className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{t('overview.staff')}</Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Doctors</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('nav.doctors')}</p>
                 <p className="text-3xl font-bold dark:text-white">{doctorsCount}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">On duty</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('overview.onDuty')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -227,11 +230,11 @@ export default function HospitalOverviewPage() {
               <CardContent className="pt-6 relative">
                 <div className="flex items-center justify-between mb-2">
                   <UserCheck className="w-8 h-8 text-green-600 dark:text-green-400" />
-                  <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Staff</Badge>
+                  <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">{t('overview.staff')}</Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Nurses</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('nav.nurses')}</p>
                 <p className="text-3xl font-bold dark:text-white">{nursesCount}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">On duty</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('overview.onDuty')}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -241,11 +244,11 @@ export default function HospitalOverviewPage() {
               <CardContent className="pt-6 relative">
                 <div className="flex items-center justify-between mb-2">
                   <Bed className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                  <Badge className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">Available</Badge>
+                  <Badge className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">{t('overview.available')}</Badge>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Free Beds</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t('overview.freeBeds')}</p>
                 <p className="text-3xl font-bold dark:text-white">{availableBeds}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Out of {totalBeds}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{t('overview.outOf')} {totalBeds}</p>
               </CardContent>
             </Card>
           </motion.div>
@@ -257,7 +260,7 @@ export default function HospitalOverviewPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 dark:text-white">
                 <Bed className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                Bed Status
+                {t('overview.bedStatus')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -265,20 +268,20 @@ export default function HospitalOverviewPage() {
                 <motion.div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium dark:text-white">Total Beds</p>
+                      <p className="font-medium dark:text-white">{t('overview.totalBeds')}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {occupiedBeds} occupied, {availableBeds} available
+                        {occupiedBeds} {t('overview.occupied')}, {availableBeds} {t('overview.available')}
                       </p>
                     </div>
                     <Badge className={`${getBedStatus(availableBeds, totalBeds).bgColor} ${getBedStatus(availableBeds, totalBeds).color} border-none`}>
-                      {getBedStatus(availableBeds, totalBeds).status}
+                      {t(`overview.bed.${getBedStatus(availableBeds, totalBeds).status.toLowerCase()}`)}
                     </Badge>
                   </div>
                   <div className="relative">
                     <Progress value={totalBeds > 0 ? (occupiedBeds / totalBeds) * 100 : 0} className="h-3" />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <span className="text-xs font-semibold text-gray-900 dark:text-gray-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                        {totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0}% occupied
+                        {totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0}% {t('overview.occupied')}
                       </span>
                     </div>
                   </div>
@@ -293,7 +296,7 @@ export default function HospitalOverviewPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 dark:text-white">
                   <Stethoscope className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  Departments
+                  {t('overview.departments')}
                 </CardTitle>
               </CardHeader>
               <CardContent>

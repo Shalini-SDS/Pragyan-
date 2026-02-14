@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DoctorService } from '../services/DoctorService';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -24,6 +25,7 @@ const stagger = {
 interface Doctor {
   _id?: string;
   staff_id?: string;
+  name?: string;
   first_name?: string;
   last_name?: string;
   department?: string;
@@ -36,6 +38,7 @@ interface Doctor {
 
 export default function DoctorsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +71,10 @@ export default function DoctorsPage() {
     }
     
     const query = searchQuery.toLowerCase();
-    const fullName = `${doctor.first_name || ''} ${doctor.last_name || ''}`.toLowerCase();
+    const fullName = (
+      doctor.name ||
+      `${doctor.first_name || ''} ${doctor.last_name || ''}`
+    ).toLowerCase();
     return (
       fullName.includes(query) ||
       (doctor.department || '').toLowerCase().includes(query) ||
@@ -87,9 +93,9 @@ export default function DoctorsPage() {
           className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Doctor Directory
+            {t('doctors.title')}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">Search and view available doctors</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('doctors.subtitle')}</p>
         </motion.div>
 
         {/* Search Bar */}
@@ -105,7 +111,7 @@ export default function DoctorsPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="Search by name, department, qualification, or ID..."
+                  placeholder={t('doctors.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 py-6 text-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
@@ -117,7 +123,7 @@ export default function DoctorsPage() {
                   animate={{ opacity: 1 }}
                   className="mt-3 text-sm text-gray-600 dark:text-gray-400"
                 >
-                  Found {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''}
+                  {t('common.found')} {filteredDoctors.length} {t(filteredDoctors.length !== 1 ? 'doctors.itemsPlural' : 'doctors.itemSingle')}
                 </motion.p>
               )}
             </CardContent>
@@ -128,7 +134,7 @@ export default function DoctorsPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading doctors...</span>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">{t('doctors.loading')}</span>
           </div>
         )}
 
@@ -150,14 +156,14 @@ export default function DoctorsPage() {
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Users className="w-8 h-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Doctors</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('doctors.total')}</p>
                 <p className="text-2xl font-bold dark:text-white">{doctors.length}</p>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Stethoscope className="w-8 h-8 mx-auto mb-2 text-purple-600 dark:text-purple-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.active')}</p>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                   {doctors.filter((d) => d.is_active !== false).length}
                 </p>
@@ -166,7 +172,7 @@ export default function DoctorsPage() {
             <Card className="dark:bg-gray-900 dark:border-gray-800 hover:shadow-lg transition-all hover:scale-105">
               <CardContent className="pt-6 text-center">
                 <Users className="w-8 h-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Found</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('common.found')}</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {filteredDoctors.length}
                 </p>
@@ -182,8 +188,8 @@ export default function DoctorsPage() {
               <Card className="shadow-lg dark:bg-gray-900 dark:border-gray-800">
                 <CardContent className="py-16 text-center">
                   <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                  <p className="text-xl text-gray-500 dark:text-gray-400">No doctors found</p>
-                  <p className="text-gray-400 dark:text-gray-500 mt-2">Try adjusting your search query</p>
+                  <p className="text-xl text-gray-500 dark:text-gray-400">{t('doctors.empty')}</p>
+                  <p className="text-gray-400 dark:text-gray-500 mt-2">{t('common.trySearch')}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -212,7 +218,7 @@ export default function DoctorsPage() {
 
                             {/* Doctor Info */}
                             <h3 className="font-bold text-lg mb-1 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                              {doctor.first_name} {doctor.last_name}
+                              {doctor.name || `${doctor.first_name || ''} ${doctor.last_name || ''}`.trim() || t('doctor.unnamed')}
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{doctor.staff_id}</p>
 
@@ -234,7 +240,7 @@ export default function DoctorsPage() {
                             {/* Experience */}
                             {doctor.experience_years && (
                               <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                                {doctor.experience_years} years experience
+                                {doctor.experience_years} {t('doctor.years')} {t('doctors.experienceSuffix')}
                               </p>
                             )}
 
@@ -242,11 +248,11 @@ export default function DoctorsPage() {
                             <div className="mt-4 pt-4 border-t dark:border-gray-800">
                               {doctor.license_number ? (
                                 <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400">
-                                  ✓ Licensed
+                                  {t('doctors.licensed')}
                                 </Badge>
                               ) : (
                                 <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800">
-                                  No License Info
+                                  {t('doctors.noLicense')}
                                 </Badge>
                               )}
                             </div>
