@@ -8,12 +8,32 @@ Supports login with hospital_id + staff_id, password reset on first login.
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from models.user_model import UserSchema
-from database.mongo import get_users_collection, get_hospitals_collection
+from database.mongo import (
+    get_users_collection,
+    get_hospitals_collection,
+    get_doctors_collection,
+    get_nurses_collection,
+)
 from utils.validators import validate_schema
 from datetime import datetime
 from bson.objectid import ObjectId
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _serialize_user(user):
+    """Convert DB user document into frontend-safe payload."""
+    return {
+        "id": str(user['_id']),
+        "name": user.get('name'),
+        "email": user.get('email'),
+        "role": user.get('role'),
+        "staff_id": user.get('staff_id'),
+        "hospital_id": user.get('hospital_id'),
+        "department": user.get('department'),
+        "specialization": user.get('specialization'),
+        "phone": user.get('phone'),
+    }
 
 
 @auth_bp.route('/hospitals', methods=['GET'])
@@ -122,21 +142,125 @@ def login():
         
         return jsonify({
             "access_token": access_token,
-            "user": {
-                "id": str(user['_id']),
-                "name": user.get('name'),
-                "email": user.get('email'),
-                "role": user.get('role'),
-                "staff_id": user.get('staff_id'),
-                "hospital_id": user.get('hospital_id'),
-                "department": user.get('department'),
-                "specialization": user.get('specialization')
-            },
+            "user": _serialize_user(user),
             "needs_password_reset": False
         }), 200
         
     except Exception as e:
         return jsonify({"error": f"Login failed: {str(e)}"}), 500
+
+
+@auth_bp.route('/signup', methods=['POST'])
+def signup():
+    """
+    Register a new hospital staff account and return authenticated session.
+
+    Required fields:
+        - hospital_id
+        - staff_id
+        - name
+        - role (doctor|nurse|admin|staff)
+        - password (min 6 chars)
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    hospital_id = data.get('hospital_id')
+    staff_id = data.get('staff_id')
+    name = data.get('name')
+    role = data.get('role', 'staff')
+    password = data.get('password')
+
+    if not hospital_id or not staff_id or not name or not password:
+        return jsonify({"error": "hospital_id, staff_id, name, and password are required"}), 400
+
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    if role not in ['doctor', 'nurse', 'admin', 'staff']:
+        return jsonify({"error": "Invalid role"}), 400
+
+    users_collection = get_users_collection()
+    hospitals_collection = get_hospitals_collection()
+
+    try:
+        hospital = hospitals_collection.find_one({"hospital_id": hospital_id, "is_active": True})
+        if not hospital:
+            return jsonify({"error": "Invalid hospital_id"}), 400
+
+        existing_user = users_collection.find_one({
+            "hospital_id": hospital_id,
+            "staff_id": staff_id
+        })
+        if existing_user:
+            return jsonify({"error": "Staff ID already exists for this hospital"}), 409
+
+        now = datetime.utcnow()
+        new_user = {
+            "hospital_id": hospital_id,
+            "staff_id": staff_id,
+            "name": name,
+            "email": data.get('email'),
+            "role": role,
+            "department": data.get('department'),
+            "specialization": data.get('specialization'),
+            "phone": data.get('phone'),
+            "password": UserSchema.hash_password(password),
+            "is_password_reset": True,
+            "is_active": True,
+            "created_at": now,
+            "updated_at": now,
+            "last_login": now
+        }
+
+        result = users_collection.insert_one(new_user)
+        new_user['_id'] = result.inserted_id
+
+        # Keep role-specific directory collections in sync.
+        if role == 'doctor':
+            get_doctors_collection().insert_one({
+                "hospital_id": hospital_id,
+                "staff_id": staff_id,
+                "name": name,
+                "email": data.get('email'),
+                "phone": data.get('phone'),
+                "specialization": data.get('specialization'),
+                "department": data.get('department'),
+                "qualifications": data.get('qualifications') or [],
+                "experience_years": data.get('experience_years'),
+                "license_number": data.get('license_number'),
+                "is_active": True,
+                "created_at": now,
+            })
+        elif role == 'nurse':
+            get_nurses_collection().insert_one({
+                "hospital_id": hospital_id,
+                "staff_id": staff_id,
+                "name": name,
+                "email": data.get('email'),
+                "phone": data.get('phone'),
+                "department": data.get('department'),
+                "shift": data.get('shift', 'morning'),
+                "license_number": data.get('license_number'),
+                "qualifications": data.get('qualifications') or [],
+                "is_active": True,
+                "created_at": now,
+            })
+
+        access_token = create_access_token(
+            identity=str(new_user['_id']),
+            additional_claims={"role": role, "hospital_id": hospital_id}
+        )
+
+        return jsonify({
+            "access_token": access_token,
+            "user": _serialize_user(new_user),
+            "needs_password_reset": False
+        }), 201
+    except Exception as e:
+        return jsonify({"error": f"Signup failed: {str(e)}"}), 500
 
 
 @auth_bp.route('/change-password', methods=['POST'])

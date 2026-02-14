@@ -239,18 +239,19 @@ def create_triage():
         
         if not data:
             return jsonify({"error": "Missing request body"}), 400
-        
-        # Validate schema
-        schema = TriageSchema()
-        errors = schema.validate(data)
-        if errors:
-            return jsonify({"error": "Validation failed", "details": errors}), 400
-        
+
+        # Populate server-controlled fields before validation.
         data['hospital_id'] = hospital_id
         data['nurse_id'] = user_id
         data['status'] = 'completed'
         data['created_at'] = datetime.utcnow()
         data['updated_at'] = datetime.utcnow()
+
+        # Validate schema
+        schema = TriageSchema()
+        errors = schema.validate(data)
+        if errors:
+            return jsonify({"error": "Validation failed", "details": errors}), 400
         
         # Get ML predictions
         ml_predictions = predict_triage_assessment(data)

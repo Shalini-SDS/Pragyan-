@@ -52,6 +52,12 @@ export default function PatientTriagePage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const parseSymptoms = (rawText: string): string[] =>
+    rawText
+      .split(/[\n,;]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -105,7 +111,7 @@ export default function PatientTriagePage() {
       let patientId = formData.patientId;
       if (!patientId) {
         const response = await PatientService.createPatient(patientData);
-        patientId = response._id;
+        patientId = response.patient_id || response._id;
         setFormData((prev) => ({ ...prev, patientId }));
       }
 
@@ -230,16 +236,16 @@ export default function PatientTriagePage() {
                     onChange={(e) =>
                       handleInputChange(
                         'symptoms',
-                        e.target.value
-                          .split(',')
-                          .map((item) => item.trim())
-                          .filter(Boolean)
+                        parseSymptoms(e.target.value)
                       )
                     }
-                    placeholder="e.g., chest pain, shortness of breath, dizziness"
+                    placeholder="Enter multiple symptoms (comma, semicolon, or new line separated)"
                     rows={4}
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Example: chest pain, shortness of breath, dizziness, nausea
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="previousConditions">Previous Medical Conditions</Label>

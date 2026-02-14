@@ -33,19 +33,26 @@ export class APIClient {
         headers,
       });
 
-      // Handle 401 Unauthorized
-      if (response.status === 401) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        throw new Error('Session expired. Please login again.');
-      }
-
-      // Handle other errors
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        const hasToken = !!token;
+        const isAuthEndpoint =
+          endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/hospitals');
+        const jwtErrorMessage = String(errorData.msg || errorData.error || '').toLowerCase();
+        const tokenLooksInvalid =
+          jwtErrorMessage.includes('expired') ||
+          jwtErrorMessage.includes('signature') ||
+          jwtErrorMessage.includes('token');
+
+        // Clear stale auth only for protected API calls, not login attempts.
+        if ((response.status === 401 || response.status === 422) && hasToken && !isAuthEndpoint && tokenLooksInvalid) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('user');
+          throw new Error('Session expired. Please login again.');
+        }
+
         throw new Error(
-          errorData.error || `HTTP ${response.status}: ${response.statusText}`
+          errorData.error || errorData.msg || `HTTP ${response.status}: ${response.statusText}`
         );
       }
 

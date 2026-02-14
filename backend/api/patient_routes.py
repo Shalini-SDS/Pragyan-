@@ -18,6 +18,7 @@ from database.mongo import get_patients_collection, get_triages_collection
 from models.user_model import PatientSchema
 from datetime import datetime
 from bson.objectid import ObjectId
+import uuid
 
 patient_bp = Blueprint('patient', __name__)
 
@@ -101,13 +102,16 @@ def create_patient():
         if not data:
             return jsonify({"error": "Missing request body"}), 400
         
-        # Validate schema
+        data['hospital_id'] = hospital_id
+        if not data.get('patient_id'):
+            data['patient_id'] = f"PAT-{uuid.uuid4().hex[:8].upper()}"
+
+        # Validate schema after server-populated fields are present
         schema = PatientSchema()
         errors = schema.validate(data)
         if errors:
             return jsonify({"error": "Validation failed", "details": errors}), 400
-        
-        data['hospital_id'] = hospital_id
+
         data['created_at'] = datetime.utcnow()
         data['updated_at'] = datetime.utcnow()
         
