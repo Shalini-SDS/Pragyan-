@@ -40,12 +40,22 @@ class Config:
     # Model Configuration
     MODEL_PATH = os.environ.get(
         'MODEL_PATH',
-        'risk_engine/model.joblib'
+        'models/risk_model.joblib'
     )
+    
+    # JWT Configuration
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
+    JWT_ACCESS_TOKEN_EXPIRES = 3600  # 1 hour
     
     # Celery Configuration
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
+    
+    # CORS Configuration
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+    
+    # Frontend Configuration
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
 
 
 class DevelopmentConfig(Config):

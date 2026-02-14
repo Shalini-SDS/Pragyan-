@@ -24,7 +24,7 @@ def preprocess_patient_data(data):
     Processing:
         1. Convert dict to DataFrame for consistent handling
         2. Drop patient_id (metadata, not a feature)
-        3. Encode gender: Male=0, Female=1, Other=2
+        3. Ensure columns match training data order
         4. Convert all columns to float for model compatibility
     
     Args:
@@ -32,7 +32,6 @@ def preprocess_patient_data(data):
             Example: {
                 "patient_id": "P001",
                 "age": 45,
-                "gender": "Male",
                 "bmi": 28.5,
                 ...
             }
@@ -48,7 +47,6 @@ def preprocess_patient_data(data):
         patient = {
             "patient_id": "P001",
             "age": 45,
-            "gender": "Male",
             "bmi": 28.5,
             ...
         }
@@ -67,11 +65,15 @@ def preprocess_patient_data(data):
     if 'patient_id' in df.columns:
         df = df.drop(columns=['patient_id'])
     
-    # Step 3: Encode categorical variables
-    # Gender encoding: Male=0, Female=1, Other=2
-    if 'gender' in df.columns:
-        gender_mapping = {'Male': 0, 'Female': 1, 'Other': 2}
-        df['gender'] = df['gender'].map(gender_mapping)
+    # Step 3: Ensure columns match training data order
+    feature_columns = [
+        'age', 'bmi', 'blood_pressure', 'cholesterol', 'glucose', 
+        'smoker', 'history_of_heart_disease', 'chest_pain', 
+        'shortness_of_breath', 'dizziness', 'fever'
+    ]
+    
+    # Reorder columns to match training data
+    df = df[feature_columns]
     
     # Step 4: Ensure all columns are numeric (booleans -> int -> float)
     df = df.astype(float)

@@ -23,13 +23,16 @@ class PatientSchema(Schema):
     Fields:
         patient_id (str): Unique patient identifier
         age (int): Patient age in years (0-120)
-        gender (str): Gender classification (Male, Female, Other)
         bmi (float): Body Mass Index
         blood_pressure (int): Systolic blood pressure
         cholesterol (int): Total cholesterol level
         glucose (int): Blood glucose level
         smoker (bool): Smoking status
         history_of_heart_disease (bool): Presence of heart disease history
+        chest_pain (bool): Presence of chest pain
+        shortness_of_breath (bool): Presence of shortness of breath
+        dizziness (bool): Presence of dizziness
+        fever (bool): Presence of fever
     """
     
     patient_id = fields.Str(
@@ -43,15 +46,6 @@ class PatientSchema(Schema):
         error_messages={
             "required": "age is required",
             "validator_failed": "age must be between 0 and 120"
-        }
-    )
-    
-    gender = fields.Str(
-        required=True,
-        validate=validate.OneOf(['Male', 'Female', 'Other']),
-        error_messages={
-            "required": "gender is required",
-            "validator_failed": "gender must be one of: Male, Female, Other"
         }
     )
     
@@ -83,6 +77,26 @@ class PatientSchema(Schema):
     history_of_heart_disease = fields.Bool(
         required=True,
         error_messages={"required": "history_of_heart_disease is required"}
+    )
+
+    chest_pain = fields.Bool(
+        required=True,
+        error_messages={"required": "chest_pain is required"}
+    )
+
+    shortness_of_breath = fields.Bool(
+        required=True,
+        error_messages={"required": "shortness_of_breath is required"}
+    )
+
+    dizziness = fields.Bool(
+        required=True,
+        error_messages={"required": "dizziness is required"}
+    )
+
+    fever = fields.Bool(
+        required=True,
+        error_messages={"required": "fever is required"}
     )
 
 

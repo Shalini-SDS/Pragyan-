@@ -11,9 +11,13 @@ Extensions initialized:
 
 from flask_pymongo import PyMongo
 from celery import Celery
+from flask_jwt_extended import JWTManager
 
 # PyMongo instance for MongoDB operations
 mongo = PyMongo()
+
+# JWT instance for authentication
+jwt = JWTManager()
 
 
 def make_celery(app_name):

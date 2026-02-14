@@ -13,9 +13,11 @@ Architecture:
 """
 
 from flask import Flask, jsonify
+from flask_cors import CORS
 from config import Config
-from extensions import mongo, make_celery
+from extensions import mongo, make_celery, jwt
 from api import api_bp
+from database.mongo import initialize_indexes
 
 
 def create_app(config_class=Config):
@@ -25,6 +27,7 @@ def create_app(config_class=Config):
     Creates and configures the Flask application with:
     - Configuration from config_class
     - MongoDB integration
+    - CORS support
     - API blueprints
     - Error handlers
     
@@ -39,12 +42,23 @@ def create_app(config_class=Config):
     # Load configuration
     app.config.from_object(config_class)
     
+    # Enable CORS
+    CORS(app, resources={r"/api/*": {"origins": config_class.CORS_ORIGINS}})
+    
     # Initialize extensions
     mongo.init_app(app)
+    jwt.init_app(app)
     
     # Initialize Celery (optional, for async tasks)
     celery = make_celery(app.import_name)
     celery.conf.update(app.config)
+    
+    # Initialize database indexes
+    with app.app_context():
+        try:
+            initialize_indexes()
+        except Exception as e:
+            print(f"Warning: Could not initialize indexes: {e}")
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')

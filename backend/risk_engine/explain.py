@@ -108,5 +108,9 @@ def get_explanation(patient_data):
         # If SHAP fails, return empty explanation
         print(f"SHAP explanation failed: {str(e)}")
         # Return dummy explanation with zeros
-        feature_names = ['age', 'gender', 'bmi', 'blood_pressure', 'cholesterol', 'glucose', 'smoker', 'history_of_heart_disease']
+        feature_names = [
+            'age', 'bmi', 'blood_pressure', 'cholesterol', 'glucose', 
+            'smoker', 'history_of_heart_disease', 'chest_pain', 
+            'shortness_of_breath', 'dizziness', 'fever'
+        ]
         return {name: 0.0 for name in feature_names}

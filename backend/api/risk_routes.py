@@ -16,8 +16,10 @@ Features:
 """
 
 from flask import Blueprint, jsonify
+from flask_jwt_extended import jwt_required
 from services.risk_service import RiskService
 from utils.validators import validate_schema
+from utils.auth_utils import doctor_required
 from models.patient_model import PatientSchema
 from tasks.risk_tasks import predict_risk_async
 
@@ -26,6 +28,8 @@ risk_bp = Blueprint('risk', __name__)
 
 
 @risk_bp.route('/predict', methods=['POST'])
+@jwt_required()
+@doctor_required
 @validate_schema(PatientSchema)
 def predict(data):
     """
@@ -88,6 +92,8 @@ def predict(data):
 
 
 @risk_bp.route('/predict-async', methods=['POST'])
+@jwt_required()
+@doctor_required
 @validate_schema(PatientSchema)
 def predict_async(data):
     """
