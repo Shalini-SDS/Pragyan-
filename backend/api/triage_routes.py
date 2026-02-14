@@ -244,14 +244,15 @@ def create_triage():
         data['hospital_id'] = hospital_id
         data['nurse_id'] = user_id
         data['status'] = 'completed'
-        data['created_at'] = datetime.utcnow()
-        data['updated_at'] = datetime.utcnow()
 
         # Validate schema
         schema = TriageSchema()
         errors = schema.validate(data)
         if errors:
             return jsonify({"error": "Validation failed", "details": errors}), 400
+
+        data['created_at'] = datetime.utcnow()
+        data['updated_at'] = datetime.utcnow()
         
         # Get ML predictions
         ml_predictions = predict_triage_assessment(data)

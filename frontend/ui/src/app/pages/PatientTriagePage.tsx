@@ -385,18 +385,18 @@ export default function PatientTriagePage() {
 
               <div>
                 <Label className="mb-2 block">Recommended Department</Label>
-                <div className="bg-blue-50 border-2 border-blue-300 px-6 py-3 rounded-lg inline-block">
-                  <span className="font-bold text-lg text-blue-800">{triageResult.recommendedDepartment}</span>
+                <div className="bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-300 dark:border-blue-700 px-6 py-3 rounded-lg inline-block">
+                  <span className="font-bold text-lg text-blue-800 dark:text-blue-200">{triageResult.recommendedDepartment}</span>
                 </div>
               </div>
 
               <div>
                 <Label className="mb-2 block">Clinical Reasoning</Label>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg space-y-2">
                   {triageResult.reasoning.map((reason, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <CheckCircle className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
-                      <span className="text-sm">{reason}</span>
+                      <span className="text-sm text-gray-800 dark:text-gray-200">{reason}</span>
                     </div>
                   ))}
                 </div>
@@ -404,12 +404,12 @@ export default function PatientTriagePage() {
 
               <div>
                 <Label className="mb-2 block">Required Tests and Procedures</Label>
-                <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 p-4 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {triageResult.requiredTests.map((test, index) => (
                       <div key={index} className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                        <span className="text-sm">{test}</span>
+                        <span className="text-sm text-gray-800 dark:text-gray-200">{test}</span>
                       </div>
                     ))}
                   </div>

@@ -51,8 +51,20 @@ export class APIClient {
           throw new Error('Session expired. Please login again.');
         }
 
+        let detailsMessage = '';
+        if (errorData.details && typeof errorData.details === 'object') {
+          const firstKey = Object.keys(errorData.details)[0];
+          const firstValue = firstKey ? errorData.details[firstKey] : null;
+          if (firstKey && Array.isArray(firstValue) && firstValue.length > 0) {
+            detailsMessage = `${firstKey}: ${firstValue[0]}`;
+          }
+        }
+
         throw new Error(
-          errorData.error || errorData.msg || `HTTP ${response.status}: ${response.statusText}`
+          detailsMessage ||
+          errorData.error ||
+          errorData.msg ||
+          `HTTP ${response.status}: ${response.statusText}`
         );
       }
 
