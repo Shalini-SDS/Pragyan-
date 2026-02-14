@@ -1,4 +1,5 @@
 # Docker Compose configuration for local development
+# Includes: MongoDB, Redis, Flask API with Socket.IO, Celery Worker, Flower UI
 
 version: '3.8'
 
@@ -17,7 +18,7 @@ services:
     networks:
       - healthcare_network
 
-  # Redis Cache/Message Broker
+  # Redis Cache/Message Broker (used by Celery and Socket.IO)
   redis:
     image: redis:7-alpine
     container_name: healthcare_redis
@@ -29,7 +30,7 @@ services:
     networks:
       - healthcare_network
 
-  # Flask API
+  # Flask API with Socket.IO
   api:
     build: .
     container_name: healthcare_api
@@ -42,6 +43,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       MODEL_PATH: risk_engine/model.joblib
       SECRET_KEY: dev-secret-key-change-in-production
+      # Socket.IO Configuration
+      SOCKET_IO_CORS_ORIGINS: http://localhost:5173,http://localhost:3000
     depends_on:
       - mongodb
       - redis
@@ -56,7 +59,7 @@ services:
       retries: 3
       start_period: 5s
 
-  # Celery Worker
+  # Celery Worker (async tasks with Socket.IO event emission)
   celery_worker:
     build: .
     container_name: healthcare_celery_worker
@@ -98,6 +101,11 @@ services:
 volumes:
   mongodb_data:
   redis_data:
+
+networks:
+  healthcare_network:
+    driver: bridge
+
 
 networks:
   healthcare_network:

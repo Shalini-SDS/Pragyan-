@@ -1,58 +1,171 @@
-import pandas as pd
-import numpy as np
 import os
 import joblib
-from sklearn.model_selection import train_test_split
+import numpy as np
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from risk_engine.preprocess import TRIAGE_FEATURE_COLUMNS, DEPARTMENT_LABELS
 
-def train_random_forest(data_path, model_path, encoder_path):
-    # Load dataset
-    if not os.path.exists(data_path):
-        print(f"Error: Data file not found at {data_path}")
-        return
 
-    df = pd.read_csv(data_path)
+def _rule_department(row):
+    if (
+        row['loss_of_consciousness'] == 1
+        or (row['difficulty_breathing'] == 1 and row['oxygen_saturation'] < 90)
+        or (row['chest_pain'] == 1 and row['systolic_bp'] > 180)
+    ):
+        return 'Emergency'
+    if row['chest_pain'] == 1 or row['hypertension'] == 1 or row['heart_disease'] == 1:
+        return 'Cardiology'
+    if row['severe_headache'] == 1 or row['dizziness'] == 1 or row['confusion'] == 1:
+        return 'Neurology'
+    if row['difficulty_breathing'] == 1 or row['oxygen_saturation'] < 92 or row['asthma'] == 1:
+        return 'Pulmonology'
+    if row['abdominal_pain'] == 1 or row['nausea'] == 1 or row['fever'] == 1:
+        return 'Gastroenterology'
+    return 'General Medicine'
 
-    # Separate features and targets
-    # We will predict 'risk_level'
-    # Features: age, bmi, blood_pressure, cholesterol, glucose, smoker, history_of_heart_disease, chest_pain, shortness_of_breath, dizziness, fever
-    # Target: risk_level
-    
-    X = df.drop(['risk_level', 'department'], axis=1)
-    y = df['risk_level']
 
-    # Encode target
-    le = LabelEncoder()
-    y_encoded = le.fit_transform(y)
+def _vital_abnormality_score(row):
+    score = 0
+    if row['systolic_bp'] > 160:
+        score += 10
+    if row['oxygen_saturation'] < 90:
+        score += 15
+    if row['heart_rate'] > 120:
+        score += 10
+    if row['temperature'] > 39:
+        score += 8
+    return min(score / 43.0, 1.0)
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-    # Initialize and train Random Forest Classifier
-    rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
-    rf_clf.fit(X_train, y_train)
+def _critical_symptom_score(row):
+    score = 0
+    if row['loss_of_consciousness'] == 1:
+        score += 15
+    if row['chest_pain'] == 1:
+        score += 10
+    if row['difficulty_breathing'] == 1:
+        score += 12
+    if row['confusion'] == 1:
+        score += 8
+    return min(score / 45.0, 1.0)
 
-    # Predictions
-    y_pred = rf_clf.predict(X_test)
 
-    # Evaluation
-    print("Model Training Complete.")
-    print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, target_names=le.classes_))
+def _rule_priority_score(row):
+    # Proxy model probability term for synthetic labels.
+    probability_proxy = (
+        0.08 * row['chest_pain'] +
+        0.1 * row['difficulty_breathing'] +
+        0.07 * row['loss_of_consciousness'] +
+        0.06 * row['confusion'] +
+        0.04 * row['heart_disease'] +
+        0.03 * row['hypertension'] +
+        0.06 * max((95 - row['oxygen_saturation']) / 15, 0) +
+        0.04 * max((row['systolic_bp'] - 120) / 60, 0) +
+        0.03 * max((row['heart_rate'] - 80) / 60, 0)
+    )
+    probability_proxy = float(np.clip(probability_proxy, 0, 1))
+    priority = (probability_proxy * 70) + (_vital_abnormality_score(row) * 20) + (_critical_symptom_score(row) * 10)
+    return float(np.clip(priority, 0, 100))
 
-    # Save model and encoder
-    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    joblib.dump(rf_clf, model_path)
-    joblib.dump(le, encoder_path)
-    print(f"Model saved to: {model_path}")
-    print(f"Encoder saved to: {encoder_path}")
 
-if __name__ == "__main__":
-    DATA_PATH = "backend/data/synthetic_data.csv"
-    MODEL_PATH = "backend/models/risk_model.joblib"
-    ENCODER_PATH = "backend/models/risk_encoder.joblib"
-    
-    train_random_forest(DATA_PATH, MODEL_PATH, ENCODER_PATH)
+def _risk_level_from_score(score):
+    if score >= 70:
+        return 'High'
+    if score >= 40:
+        return 'Medium'
+    return 'Low'
+
+
+def generate_synthetic_dataset(num_rows=7000, random_seed=42):
+    rng = np.random.default_rng(random_seed)
+    rows = []
+    for _ in range(num_rows):
+        age = int(rng.integers(1, 95))
+        gender = rng.choice(['male', 'female', 'other'], p=[0.48, 0.48, 0.04])
+        gender_male = 1 if gender == 'male' else 0
+        gender_female = 1 if gender == 'female' else 0
+
+        row = {
+            'age': age,
+            'gender_male': gender_male,
+            'gender_female': gender_female,
+            'systolic_bp': int(np.clip(rng.normal(128, 22), 85, 220)),
+            'heart_rate': int(np.clip(rng.normal(84, 18), 40, 180)),
+            'temperature': round(float(np.clip(rng.normal(37.2, 0.9), 35.0, 41.5)), 1),
+            'oxygen_saturation': int(np.clip(rng.normal(96, 4), 70, 100)),
+            'respiratory_rate': int(np.clip(rng.normal(18, 5), 8, 40)),
+            'chest_pain': int(rng.binomial(1, 0.16)),
+            'difficulty_breathing': int(rng.binomial(1, 0.14)),
+            'severe_headache': int(rng.binomial(1, 0.14)),
+            'abdominal_pain': int(rng.binomial(1, 0.18)),
+            'fever': int(rng.binomial(1, 0.2)),
+            'nausea': int(rng.binomial(1, 0.2)),
+            'dizziness': int(rng.binomial(1, 0.16)),
+            'confusion': int(rng.binomial(1, 0.08)),
+            'loss_of_consciousness': int(rng.binomial(1, 0.03)),
+            'diabetes': int(rng.binomial(1, 0.18)),
+            'hypertension': int(rng.binomial(1, 0.24)),
+            'heart_disease': int(rng.binomial(1, 0.12)),
+            'asthma': int(rng.binomial(1, 0.1)),
+            'cancer': int(rng.binomial(1, 0.05)),
+            'kidney_disease': int(rng.binomial(1, 0.07)),
+            'other_symptom': int(rng.binomial(1, 0.08)),
+            'other_condition': int(rng.binomial(1, 0.06)),
+        }
+
+        row['department'] = _rule_department(row)
+        row['priority_score'] = _rule_priority_score(row)
+        row['risk_level'] = _risk_level_from_score(row['priority_score'])
+        rows.append(row)
+
+    return pd.DataFrame(rows)
+
+
+def train_models(output_dir='backend/models', num_rows=7000):
+    df = generate_synthetic_dataset(num_rows=num_rows)
+    X = df[TRIAGE_FEATURE_COLUMNS]
+
+    # Risk model
+    y_risk = df['risk_level']
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_risk, test_size=0.2, random_state=42, stratify=y_risk
+    )
+    risk_model = RandomForestClassifier(n_estimators=250, random_state=42, class_weight='balanced')
+    risk_model.fit(X_train, y_train)
+    y_pred = risk_model.predict(X_test)
+    print('Risk model accuracy:', round(accuracy_score(y_test, y_pred), 4))
+    print(classification_report(y_test, y_pred))
+
+    # Department model
+    y_dept = df['department']
+    Xd_train, Xd_test, yd_train, yd_test = train_test_split(
+        X, y_dept, test_size=0.2, random_state=42, stratify=y_dept
+    )
+    dept_model = RandomForestClassifier(n_estimators=250, random_state=42, class_weight='balanced')
+    dept_model.fit(Xd_train, yd_train)
+    yd_pred = dept_model.predict(Xd_test)
+    print('Department model accuracy:', round(accuracy_score(yd_test, yd_pred), 4))
+    print(classification_report(yd_test, yd_pred, labels=DEPARTMENT_LABELS, zero_division=0))
+
+    os.makedirs(output_dir, exist_ok=True)
+    risk_model_path = os.path.join(output_dir, 'risk_model.joblib')
+    dept_model_path = os.path.join(output_dir, 'department_model.joblib')
+    pkl_risk_path = os.path.join(output_dir, 'risk_model.pkl')
+    pkl_dept_path = os.path.join(output_dir, 'department_model.pkl')
+
+    # Save as .joblib and .pkl (both are joblib format for simple deployment compatibility).
+    joblib.dump(risk_model, risk_model_path)
+    joblib.dump(dept_model, dept_model_path)
+    joblib.dump(risk_model, pkl_risk_path)
+    joblib.dump(dept_model, pkl_dept_path)
+
+    print('Saved:', risk_model_path)
+    print('Saved:', dept_model_path)
+    print('Saved:', pkl_risk_path)
+    print('Saved:', pkl_dept_path)
+
+
+if __name__ == '__main__':
+    train_models(output_dir='backend/models', num_rows=7000)

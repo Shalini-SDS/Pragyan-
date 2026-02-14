@@ -22,10 +22,10 @@ class ModelLoader:
     """
     
     # Class variable to cache the loaded model
-    _model = None
+    _models = {}
     
     @classmethod
-    def get_model(cls):
+    def get_model(cls, model_type='risk'):
         """
         Get the trained Random Forest model.
         
@@ -46,9 +46,18 @@ class ModelLoader:
             model = ModelLoader.get_model()
             predictions = model.predict_proba(X_test)
         """
-        if cls._model is None:
+        if model_type not in cls._models:
             # Get model path from Flask configuration
-            model_path = current_app.config['MODEL_PATH']
+            if model_type == 'department':
+                model_path = current_app.config.get(
+                    'DEPARTMENT_MODEL_PATH',
+                    'models/department_model.joblib'
+                )
+            else:
+                model_path = current_app.config.get(
+                    'MODEL_PATH',
+                    'models/risk_model.joblib'
+                )
             
             # Check if file exists
             if not os.path.exists(model_path):
@@ -60,14 +69,14 @@ class ModelLoader:
             
             try:
                 # Load model from disk
-                cls._model = joblib.load(model_path)
-                print(f"Model loaded successfully from {model_path}")
+                cls._models[model_type] = joblib.load(model_path)
+                print(f"Model '{model_type}' loaded successfully from {model_path}")
             except Exception as e:
                 raise Exception(
                     f"Failed to load model from {model_path}: {str(e)}"
                 )
-        
-        return cls._model
+
+        return cls._models[model_type]
     
     @classmethod
     def reset_model(cls):
@@ -80,4 +89,4 @@ class ModelLoader:
             ModelLoader.reset_model()  # Clear cache
             model = ModelLoader.get_model()  # Reload
         """
-        cls._model = None
+        cls._models = {}

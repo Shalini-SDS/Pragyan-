@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,42 +10,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { AlertCircle, CheckCircle, Activity, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import TriageService, { TriageData } from '../services/TriageService';
-import PatientService from '../services/PatientService';
 
 interface TriageResult {
-  riskLevel: 'Low' | 'Medium' | 'High' | 'Critical';
+  riskLevel: string;
   recommendedDepartment: string;
-  riskScore: number;
+  priorityScore: number;
   confidence: number;
-  reasoning: string[];
+  patientId?: string;
+  topContributingFeatures: string[];
+  reasoning: string;
   requiredTests: string[];
 }
 
 export default function PatientTriagePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { t } = useLanguage();
 
   const commonSymptoms = [
-    t('triage.symptom.chestPain'),
-    t('triage.symptom.breathing'),
-    t('triage.symptom.headache'),
-    t('triage.symptom.abdominal'),
-    t('triage.symptom.fever'),
-    t('triage.symptom.nausea'),
-    t('triage.symptom.dizziness'),
-    t('triage.symptom.confusion'),
-    t('triage.symptom.loc'),
+    { key: 'chest pain', label: t('triage.symptom.chestPain') },
+    { key: 'difficulty breathing', label: t('triage.symptom.breathing') },
+    { key: 'severe headache', label: t('triage.symptom.headache') },
+    { key: 'abdominal pain', label: t('triage.symptom.abdominal') },
+    { key: 'fever', label: t('triage.symptom.fever') },
+    { key: 'nausea', label: t('triage.symptom.nausea') },
+    { key: 'dizziness', label: t('triage.symptom.dizziness') },
+    { key: 'confusion', label: t('triage.symptom.confusion') },
+    { key: 'loss of consciousness', label: t('triage.symptom.loc') },
   ];
 
   const commonConditions = [
-    t('triage.condition.diabetes'),
-    t('triage.condition.hypertension'),
-    t('triage.condition.heartDisease'),
-    t('triage.condition.asthma'),
-    t('triage.condition.cancer'),
-    t('triage.condition.kidneyDisease'),
-    t('triage.condition.none'),
+    { key: 'diabetes', label: t('triage.condition.diabetes') },
+    { key: 'hypertension', label: t('triage.condition.hypertension') },
+    { key: 'heart disease', label: t('triage.condition.heartDisease') },
+    { key: 'asthma', label: t('triage.condition.asthma') },
+    { key: 'cancer', label: t('triage.condition.cancer') },
+    { key: 'kidney disease', label: t('triage.condition.kidneyDisease') },
+    { key: 'none', label: t('triage.condition.none') },
   ];
 
   const [formData, setFormData] = useState({
@@ -136,7 +135,13 @@ export default function PatientTriagePage() {
     setIsLoading(true);
 
     try {
-      const triageData: Partial<TriageData> = {
+      const triagePayload: TriageData = {
+        patient_id: formData.patientId || undefined,
+        name: formData.name,
+        age: parseInt(formData.age, 10) || 0,
+        contact_number: formData.contactNumber,
+        guardian_name: formData.guardianName || undefined,
+        guardian_contact: formData.guardianContact || undefined,
         blood_pressure: formData.bloodPressure || '120/80',
         heart_rate: parseInt(formData.heartRate, 10) || 0,
         temperature: parseFloat(formData.temperature) || 37,
@@ -148,53 +153,22 @@ export default function PatientTriagePage() {
         severity: parseInt(formData.severity, 10),
       };
 
-      const predictions = await TriageService.predictTriage(triageData);
-
-      setTriageResult({
-        riskLevel: predictions.priority_level || predictions.risk_level || t('triage.risk.medium'),
-        recommendedDepartment: predictions.predicted_department || t('triage.department.general'),
-        riskScore: predictions.risk_score || 0.5,
-        confidence: predictions.confidence || 0.5,
-        reasoning: predictions.reasoning || [t('triage.success.reasoningDefault')],
-        requiredTests: predictions.recommended_tests || [],
-      });
-
-      const patientData = {
-        name: formData.name,
-        age: parseInt(formData.age, 10),
-        gender: formData.gender,
-        contact_number: formData.contactNumber,
-        email: undefined,
-        address: undefined,
-        guardian_name: formData.guardianName || undefined,
-        guardian_contact: formData.guardianContact || undefined,
-        medical_history: normalizedConditions.length > 0 ? normalizedConditions : undefined,
-      };
-
-      let patientId = formData.patientId;
-      if (!patientId) {
-        const response = await PatientService.createPatient(patientData);
-        patientId = response.patient_id || response._id;
+      const predictions = await TriageService.createTriage(triagePayload);
+      const patientId = predictions.patient_id || formData.patientId;
+      if (patientId) {
         setFormData((prev) => ({ ...prev, patientId }));
       }
 
-      if (patientId || user) {
-        const triagePayload: TriageData = {
-          patient_id: patientId,
-          blood_pressure: formData.bloodPressure || '120/80',
-          heart_rate: parseInt(formData.heartRate, 10) || 0,
-          temperature: parseFloat(formData.temperature) || 37,
-          respiratory_rate: parseInt(formData.respiratoryRate, 10) || 16,
-          oxygen_saturation: parseInt(formData.oxygenSaturation, 10) || 98,
-          gender: formData.gender,
-          symptoms: normalizedSymptoms,
-          severity: parseInt(formData.severity, 10),
-          duration: undefined,
-          previous_conditions: normalizedConditions.length > 0 ? normalizedConditions : undefined,
-        };
-
-        await TriageService.createTriage(triagePayload);
-      }
+      setTriageResult({
+        riskLevel: predictions.risk_level || predictions.priority_level || t('triage.risk.medium'),
+        recommendedDepartment: predictions.recommended_department || predictions.predicted_department || t('triage.department.general'),
+        priorityScore: predictions.priority_score ?? predictions.risk_score ?? 50,
+        confidence: predictions.confidence || 0.5,
+        patientId,
+        topContributingFeatures: predictions.explainability?.top_contributing_features || [],
+        reasoning: predictions.explainability?.reasoning || t('triage.success.reasoningDefault'),
+        requiredTests: predictions.recommended_tests || [],
+      });
 
       setShowResult(true);
       toast.success(t('triage.success.complete'));
@@ -212,8 +186,6 @@ export default function PatientTriagePage() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'Critical':
-        return 'bg-red-200 text-red-900 border-red-400';
       case 'High':
         return 'bg-red-100 text-red-800 border-red-300';
       case 'Medium':
@@ -308,19 +280,19 @@ export default function PatientTriagePage() {
                   />
                   <div className="flex flex-wrap gap-2 mt-3">
                     {commonSymptoms.map((symptom) => {
-                      const active = formData.symptoms.some((s) => s.toLowerCase() === symptom.toLowerCase());
+                      const active = formData.symptoms.some((s) => s.toLowerCase() === symptom.key.toLowerCase());
                       return (
                         <button
-                          key={symptom}
+                          key={symptom.key}
                           type="button"
-                          onClick={() => toggleListValue('symptoms', symptom)}
+                          onClick={() => toggleListValue('symptoms', symptom.key)}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                             active
                               ? 'bg-[#D96C2B] text-white border-[#D96C2B]'
                               : 'bg-[#E9DED0] dark:bg-[#3B2F2F] text-[#4A3A31] dark:text-[#F3E6D8] border-transparent'
                           }`}
                         >
-                          {symptom}
+                          {symptom.label}
                         </button>
                       );
                     })}
@@ -344,19 +316,19 @@ export default function PatientTriagePage() {
                   />
                   <div className="flex flex-wrap gap-2 mt-3">
                     {commonConditions.map((condition) => {
-                      const active = formData.previousConditions.some((c) => c.toLowerCase() === condition.toLowerCase());
+                      const active = formData.previousConditions.some((c) => c.toLowerCase() === condition.key.toLowerCase());
                       return (
                         <button
-                          key={condition}
+                          key={condition.key}
                           type="button"
-                          onClick={() => toggleListValue('previousConditions', condition)}
+                          onClick={() => toggleListValue('previousConditions', condition.key)}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                             active
                               ? 'bg-[#C25D22] text-white border-[#C25D22]'
                               : 'bg-[#E9DED0] dark:bg-[#3B2F2F] text-[#4A3A31] dark:text-[#F3E6D8] border-transparent'
                           }`}
                         >
-                          {condition}
+                          {condition.label}
                         </button>
                       );
                     })}
@@ -482,11 +454,25 @@ export default function PatientTriagePage() {
             <CardContent className="space-y-6">
               <div>
                 <Label className="mb-2 block">{t('triage.riskLevel')}</Label>
-                <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 ${getRiskColor(triageResult.riskLevel)}`}>
+                <div data-testid="risk-level" className={`inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 ${getRiskColor(triageResult.riskLevel)}`}>
                   <AlertCircle className="w-5 h-5" />
                   <span className="font-bold text-lg">{triageResult.riskLevel} {t('triage.riskSuffix')}</span>
                 </div>
               </div>
+              <div>
+                <Label className="mb-2 block">Priority Score</Label>
+                <div data-testid="risk-score" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-900">
+                  <span className="font-bold text-lg">{Math.round(triageResult.priorityScore)}/100</span>
+                </div>
+              </div>
+              {triageResult.patientId && (
+                <div>
+                  <Label className="mb-2 block">Patient ID</Label>
+                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border bg-slate-50 border-slate-200 text-slate-900">
+                    <span className="font-semibold">{triageResult.patientId}</span>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <Label className="mb-2 block">{t('triage.recommendedDepartment')}</Label>
@@ -498,12 +484,24 @@ export default function PatientTriagePage() {
               <div>
                 <Label className="mb-2 block">{t('triage.clinicalReasoning')}</Label>
                 <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-4 rounded-lg space-y-2">
-                  {triageResult.reasoning.map((reason, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
-                      <span className="text-sm text-gray-800 dark:text-gray-200">{reason}</span>
-                    </div>
-                  ))}
+                  <div className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 mt-1 flex-shrink-0" />
+                    <span className="text-sm text-gray-800 dark:text-gray-200">{triageResult.reasoning}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Top Contributing Features</Label>
+                <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {triageResult.topContributingFeatures.map((feature, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-teal-600 rounded-full"></div>
+                        <span className="text-sm text-gray-800 dark:text-gray-200">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

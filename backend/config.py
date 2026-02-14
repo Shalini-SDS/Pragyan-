@@ -42,6 +42,10 @@ class Config:
         'MODEL_PATH',
         'models/risk_model.joblib'
     )
+    DEPARTMENT_MODEL_PATH = os.environ.get(
+        'DEPARTMENT_MODEL_PATH',
+        'models/department_model.joblib'
+    )
     
     # JWT Configuration
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')

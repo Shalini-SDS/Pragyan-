@@ -7,17 +7,29 @@ Extensions are initialized in app.py after the application is created.
 Extensions initialized:
     - PyMongo: MongoDB integration
     - Celery: Distributed task queue for async operations
+    - SocketIO: Real-time communication for alerts and updates
 """
 
 from flask_pymongo import PyMongo
 from celery import Celery
 from flask_jwt_extended import JWTManager
+from flask_socketio import SocketIO
 
 # PyMongo instance for MongoDB operations
 mongo = PyMongo()
 
 # JWT instance for authentication
 jwt = JWTManager()
+
+# SocketIO instance for real-time communication
+socketio = SocketIO(
+    cors_allowed_origins="*",
+    async_mode='threading',
+    logger=True,
+    engineio_logger=True,
+    ping_timeout=60,
+    ping_interval=25
+)
 
 
 def make_celery(app_name):

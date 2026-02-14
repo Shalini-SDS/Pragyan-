@@ -140,9 +140,14 @@ class TriageSchema(Schema):
     """Schema for Triage/Patient Assessment"""
     id = fields.Str(dump_only=True)
     hospital_id = fields.Str(required=True)
-    patient_id = fields.Str(required=True)
+    patient_id = fields.Str(required=False, allow_none=True)
     nurse_id = fields.Str(required=True)
     gender = fields.Str(validate=validate.OneOf(["Male", "Female", "Other"]), allow_none=True)
+    name = fields.Str(allow_none=True)
+    age = fields.Int(allow_none=True, validate=validate.Range(min=0, max=150))
+    contact_number = fields.Str(allow_none=True)
+    guardian_name = fields.Str(allow_none=True)
+    guardian_contact = fields.Str(allow_none=True)
     
     # Vital Signs
     blood_pressure = fields.Str(required=True)  # "120/80"
@@ -164,8 +169,15 @@ class TriageSchema(Schema):
     predicted_department = fields.Str(allow_none=True)
     priority_level = fields.Str(allow_none=True)  # Low, Medium, High, Critical
     risk_score = fields.Float(allow_none=True)
+    risk_level = fields.Str(allow_none=True)
+    priority_score = fields.Float(allow_none=True)
+    recommended_department = fields.Str(allow_none=True)
     confidence = fields.Float(allow_none=True)
     recommended_tests = fields.List(fields.Str(), allow_none=True)
+    explainability = fields.Dict(allow_none=True)
+    model_probability_high_risk = fields.Float(allow_none=True)
+    vital_abnormality_score = fields.Float(allow_none=True)
+    critical_symptom_score = fields.Float(allow_none=True)
     
     # Meta
     assigned_doctor_id = fields.Str(allow_none=True)

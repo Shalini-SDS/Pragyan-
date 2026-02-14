@@ -7,17 +7,19 @@ configuration, and blueprints.
 
 Architecture:
     - Config: Configuration management via config.py and .env
-    - Extensions: Flask extensions initialization (MongoDB, Celery)
+    - Extensions: Flask extensions initialization (MongoDB, Celery, SocketIO)
     - Blueprints: Modular API route organization
     - Error Handlers: Centralized error handling
+    - SocketIO: Real-time communication for alerts
 """
 
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
-from extensions import mongo, make_celery, jwt
+from extensions import mongo, make_celery, jwt, socketio
 from api import api_bp
 from database.mongo import initialize_indexes
+from socket_service import register_socket_events
 
 
 def create_app(config_class=Config):
@@ -48,10 +50,14 @@ def create_app(config_class=Config):
     # Initialize extensions
     mongo.init_app(app)
     jwt.init_app(app)
+    socketio.init_app(app)
     
     # Initialize Celery (optional, for async tasks)
     celery = make_celery(app.import_name)
     celery.conf.update(app.config)
+    
+    # Register Socket.IO events
+    register_socket_events(socketio)
     
     # Initialize database indexes
     with app.app_context():
@@ -165,8 +171,7 @@ def register_error_handlers(app):
             "status_code": 500
         }), 500
 
-
 if __name__ == '__main__':
     # Create and run the application
     app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
