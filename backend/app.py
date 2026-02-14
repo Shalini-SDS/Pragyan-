@@ -52,6 +52,46 @@ def create_app(config_class=Config):
     # Register error handlers
     register_error_handlers(app)
     
+    # Root endpoint
+    @app.route('/', methods=['GET'])
+    def index():
+        """Root endpoint with API overview."""
+        return jsonify({
+            "message": "Welcome to the Healthcare Risk Prediction API",
+            "features": [
+                {
+                    "name": "Health Check",
+                    "endpoint": "/health",
+                    "method": "GET",
+                    "description": "Monitor service status"
+                },
+                {
+                    "name": "Patient Data",
+                    "endpoint": "/api/patient/<patient_id>",
+                    "method": "GET",
+                    "description": "Retrieve patient information by ID"
+                },
+                {
+                    "name": "Risk Prediction (Sync)",
+                    "endpoint": "/api/risk/predict",
+                    "method": "POST",
+                    "description": "Perform synchronous risk prediction with SHAP explanations"
+                },
+                {
+                    "name": "Risk Prediction (Async)",
+                    "endpoint": "/api/risk/predict-async",
+                    "method": "POST",
+                    "description": "Submit asynchronous risk prediction task"
+                }
+            ],
+            "documentation": "/api/docs (if available)"
+        }), 200
+
+    # Favicon endpoint to avoid 404
+    @app.route('/favicon.ico')
+    def favicon():
+        return '', 204
+    
     # Health check endpoint
     @app.route('/health', methods=['GET'])
     def health_check():

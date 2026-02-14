@@ -78,7 +78,7 @@ def verify_setup():
     found_files = 0
     
     for category, files in required_files.items():
-        print(f"📁 {category}")
+        print(f"CATEGORY: {category}")
         print("-" * 70)
         
         for file_path in files:
@@ -88,10 +88,10 @@ def verify_setup():
             if full_path.exists():
                 found_files += 1
                 file_size = full_path.stat().st_size
-                print(f"   ✅ {file_path:<50} ({file_size:,} bytes)")
+                print(f"   [OK] {file_path:<50} ({file_size:,} bytes)")
             else:
                 all_present = False
-                print(f"   ❌ {file_path:<50} (MISSING)")
+                print(f"   [MISSING] {file_path:<50}")
         
         print()
     
@@ -100,15 +100,15 @@ def verify_setup():
     print("=" * 70)
     
     if all_present:
-        print("\n✅ ALL FILES PRESENT - SETUP IS COMPLETE!")
-        print("\n🚀 Next Steps:")
+        print("\nALL FILES PRESENT - SETUP IS COMPLETE!")
+        print("\nNext Steps:")
         print("   1. Configure .env file")
         print("   2. Install dependencies: pip install -r requirements.txt")
         print("   3. Place trained model at MODEL_PATH")
         print("   4. Run: python app.py")
         return 0
     else:
-        print("\n❌ SOME FILES ARE MISSING - SETUP INCOMPLETE")
+        print("\nSOME FILES ARE MISSING - SETUP INCOMPLETE")
         return 1
 
 
@@ -129,9 +129,9 @@ def verify_imports():
     for module in modules_to_test:
         try:
             __import__(module)
-            print(f"✅ {module:<30} - OK")
+            print(f"[OK] {module:<30}")
         except Exception as e:
-            print(f"❌ {module:<30} - FAILED: {str(e)}")
+            print(f"[FAILED] {module:<30} - {str(e)}")
             failed.append(module)
     
     return len(failed) == 0
@@ -160,9 +160,9 @@ def verify_structure():
     for directory in directories:
         dir_path = base_path / directory
         if dir_path.exists() and dir_path.is_dir():
-            print(f"✅ {directory:<30} - OK")
+            print(f"[OK] {directory:<30}")
         else:
-            print(f"❌ {directory:<30} - MISSING")
+            print(f"[MISSING] {directory:<30}")
             all_exist = False
     
     return all_exist
@@ -186,7 +186,7 @@ def main():
         import_result = verify_imports()
         results.append(("Import Verification", import_result))
     except Exception as e:
-        print(f"\n⚠️  Import verification skipped (dependencies may not be installed)")
+        print(f"\n[SKIP] Import verification skipped (dependencies may not be installed)")
     
     # Print summary
     print("\n" + "=" * 70)
@@ -194,17 +194,17 @@ def main():
     print("=" * 70)
     
     for check_name, passed in results:
-        status = "✅ PASS" if passed else "❌ FAIL"
+        status = "PASS" if passed else "FAIL"
         print(f"{check_name:<40} {status}")
     
     print("=" * 70)
     
     if all(result[1] for result in results):
-        print("\n🎉 SETUP VERIFICATION SUCCESSFUL!")
+        print("\nSETUP VERIFICATION SUCCESSFUL!")
         print("\nYour backend is ready to go!")
         return 0
     else:
-        print("\n⚠️  SETUP VERIFICATION FAILED")
+        print("\nSETUP VERIFICATION FAILED")
         print("Please resolve the issues above.")
         return 1
 
