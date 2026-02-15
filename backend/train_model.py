@@ -55,15 +55,18 @@ def _critical_symptom_score(row):
 def _rule_priority_score(row):
     # Proxy model probability term for synthetic labels.
     probability_proxy = (
-        0.08 * row['chest_pain'] +
-        0.1 * row['difficulty_breathing'] +
-        0.07 * row['loss_of_consciousness'] +
-        0.06 * row['confusion'] +
-        0.04 * row['heart_disease'] +
-        0.03 * row['hypertension'] +
-        0.06 * max((95 - row['oxygen_saturation']) / 15, 0) +
-        0.04 * max((row['systolic_bp'] - 120) / 60, 0) +
-        0.03 * max((row['heart_rate'] - 80) / 60, 0)
+        0.22 * row['chest_pain'] +
+        0.24 * row['difficulty_breathing'] +
+        0.25 * row['loss_of_consciousness'] +
+        0.15 * row['confusion'] +
+        0.12 * row['heart_disease'] +
+        0.08 * row['hypertension'] +
+        0.28 * max((95 - row['oxygen_saturation']) / 15, 0) +
+        0.20 * max((row['systolic_bp'] - 120) / 60, 0) +
+        0.18 * max((row['heart_rate'] - 80) / 60, 0) +
+        0.16 * max((row['temperature'] - 37.0) / 3.0, 0) +
+        0.10 * max((row['respiratory_rate'] - 18) / 18, 0) +
+        0.08 * max((row['age'] - 45) / 45, 0)
     )
     probability_proxy = float(np.clip(probability_proxy, 0, 1))
     priority = (probability_proxy * 70) + (_vital_abnormality_score(row) * 20) + (_critical_symptom_score(row) * 10)
@@ -127,16 +130,22 @@ def train_models(output_dir='backend/models', num_rows=7000):
     df = generate_synthetic_dataset(num_rows=num_rows)
     X = df[TRIAGE_FEATURE_COLUMNS]
 
-    # Risk model
-    y_risk = df['risk_level']
+    # Risk model: binary high-risk probability model (required for score formula).
+    # Tuned for better high-risk recall without collapsing precision.
+    y_risk = (df['priority_score'] >= 35).astype(int)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y_risk, test_size=0.2, random_state=42, stratify=y_risk
     )
-    risk_model = RandomForestClassifier(n_estimators=250, random_state=42, class_weight='balanced')
+    risk_model = RandomForestClassifier(
+        n_estimators=300,
+        random_state=42,
+        class_weight={0: 1, 1: 2},
+        n_jobs=-1,
+    )
     risk_model.fit(X_train, y_train)
     y_pred = risk_model.predict(X_test)
     print('Risk model accuracy:', round(accuracy_score(y_test, y_pred), 4))
-    print(classification_report(y_test, y_pred))
+    print(classification_report(y_test, y_pred, zero_division=0))
 
     # Department model
     y_dept = df['department']

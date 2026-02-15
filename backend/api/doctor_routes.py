@@ -12,8 +12,14 @@ Endpoints:
 """
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt
-from database.mongo import get_doctors_collection, get_users_collection
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
+from database.mongo import (
+    get_doctors_collection,
+    get_users_collection,
+    get_appointments_collection,
+    get_patients_collection,
+    get_triages_collection,
+)
 from models.user_model import DoctorSchema, UserSchema
 from datetime import datetime
 from bson.objectid import ObjectId
@@ -25,6 +31,20 @@ def get_hospital_from_jwt():
     """Extract hospital_id from JWT claims."""
     claims = get_jwt()
     return claims.get('hospital_id')
+
+
+def get_staff_id_from_jwt():
+    claims = get_jwt()
+    if claims.get('staff_id'):
+        return claims.get('staff_id')
+    user_id = get_jwt_identity()
+    try:
+        user = get_users_collection().find_one({"_id": ObjectId(user_id)})
+        if user:
+            return user.get("staff_id")
+    except Exception:
+        return None
+    return None
 
 
 @doctor_bp.route('', methods=['GET'])
@@ -84,6 +104,77 @@ def list_doctors():
                 "pages": (total + limit - 1) // limit
             }
         }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@doctor_bp.route('/my-patients', methods=['GET'])
+@jwt_required()
+def list_my_patients():
+    """
+    Return only patients related to current doctor.
+    Source: appointment requests and triages assigned to this doctor.
+    """
+    try:
+        claims = get_jwt()
+        if claims.get("role") != "doctor":
+            return jsonify({"error": "Only doctors can access this endpoint"}), 403
+
+        hospital_id = get_hospital_from_jwt()
+        staff_id = get_staff_id_from_jwt()
+        if not staff_id:
+            return jsonify({"error": "Unable to determine doctor staff_id"}), 400
+
+        appointments = get_appointments_collection()
+        triages = get_triages_collection()
+        patients_collection = get_patients_collection()
+
+        patient_ids = set()
+        for doc in appointments.find(
+            {"hospital_id": hospital_id, "doctor_staff_id": staff_id, "status": {"$in": ["pending", "approved", "confirmed"]}},
+            {"patient_id": 1}
+        ):
+            if doc.get("patient_id"):
+                patient_ids.add(doc["patient_id"])
+
+        for doc in triages.find(
+            {"hospital_id": hospital_id, "assigned_doctor_id": staff_id},
+            {"patient_id": 1}
+        ):
+            if doc.get("patient_id"):
+                patient_ids.add(doc["patient_id"])
+
+        if not patient_ids:
+            return jsonify({"patients": []}), 200
+
+        patients = list(patients_collection.find(
+            {"hospital_id": hospital_id, "patient_id": {"$in": list(patient_ids)}, "is_active": True}
+        ))
+
+        result = []
+        for patient in patients:
+            latest_triage = triages.find_one(
+                {"hospital_id": hospital_id, "patient_id": patient.get("patient_id")},
+                sort=[("created_at", -1)]
+            )
+            latest_appointment = appointments.find_one(
+                {"hospital_id": hospital_id, "patient_id": patient.get("patient_id"), "doctor_staff_id": staff_id},
+                sort=[("created_at", -1)]
+            )
+            patient["_id"] = str(patient["_id"])
+            if latest_triage and latest_triage.get("_id"):
+                latest_triage["_id"] = str(latest_triage["_id"])
+            if latest_appointment and latest_appointment.get("_id"):
+                latest_appointment["_id"] = str(latest_appointment["_id"])
+
+            result.append({
+                "patient": patient,
+                "latest_triage": latest_triage,
+                "latest_appointment": latest_appointment
+            })
+
+        result.sort(key=lambda x: x["patient"].get("updated_at", datetime.min), reverse=True)
+        return jsonify({"patients": result}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

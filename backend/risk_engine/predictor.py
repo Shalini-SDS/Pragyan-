@@ -43,6 +43,10 @@ class RiskPredictor:
             score += 12
         if row['confusion'] == 1:
             score += 8
+        if row['severe_headache'] == 1:
+            score += 6
+        if row['dizziness'] == 1:
+            score += 4
         return min(score / 45.0, 1.0)
 
     @staticmethod
@@ -136,6 +140,26 @@ class RiskPredictor:
         }
         return labels.get(col, col.replace('_', ' ').title())
 
+    @staticmethod
+    def _recommended_tests_for_department(department, row):
+        tests = ['CBC', 'Basic Metabolic Panel']
+        if department == 'Cardiology':
+            tests.extend(['ECG', 'Troponin', 'Echocardiogram'])
+        elif department == 'Neurology':
+            tests.extend(['Neurological Exam', 'CT Brain', 'MRI Brain'])
+        elif department == 'Pulmonology':
+            tests.extend(['Chest X-ray', 'ABG', 'Spirometry'])
+        elif department == 'Gastroenterology':
+            tests.extend(['LFT', 'Abdominal Ultrasound', 'Serum Lipase'])
+        elif department == 'Emergency':
+            tests.extend(['ECG', 'Chest X-ray', 'Emergency Panel', 'Point-of-care Ultrasound'])
+
+        if row['oxygen_saturation'] < 90:
+            tests.append('Supplemental Oxygen Protocol')
+        if row['loss_of_consciousness'] == 1:
+            tests.append('Emergency Airway and Neuro Monitoring')
+        return list(dict.fromkeys(tests))
+
     def predict_triage(self, triage_data):
         """Predict triage risk and department with explainability."""
         X, context = preprocess_triage_data(triage_data)
@@ -143,25 +167,53 @@ class RiskPredictor:
 
         # Model probability of high risk.
         if self.risk_model is not None:
-            risk_classes = list(self.risk_model.classes_)
-            high_idx = risk_classes.index('High') if 'High' in risk_classes else len(risk_classes) - 1
-            risk_proba = float(self.risk_model.predict_proba(X)[0][high_idx])
-            risk_confidence = float(np.max(self.risk_model.predict_proba(X)[0]))
+            try:
+                risk_classes = list(self.risk_model.classes_)
+                if 'High' in risk_classes:
+                    high_idx = risk_classes.index('High')
+                elif 1 in risk_classes:
+                    high_idx = risk_classes.index(1)
+                elif True in risk_classes:
+                    high_idx = risk_classes.index(True)
+                else:
+                    high_idx = len(risk_classes) - 1
+                risk_probs = self.risk_model.predict_proba(X)[0]
+                risk_proba = float(risk_probs[high_idx])
+                risk_confidence = float(np.max(risk_probs))
+            except Exception:
+                self.risk_model = None
+                risk_proba = 0.5
+                risk_confidence = 0.5
         else:
             risk_proba = 0.5
             risk_confidence = 0.5
 
         vital_score = self._vital_abnormality_score(row)
         critical_score = self._critical_symptom_score(row)
+        neuro_modifier = 0.0
+        # Neurologic acuity boost: stroke history + active neuro symptoms should not be near-zero.
+        if context['condition_flags'].get('stroke_history', 0) == 1 and (
+            row['severe_headache'] == 1 or row['dizziness'] == 1 or row['confusion'] == 1
+            or context['symptom_flags'].get('neuro_symptom', 0) == 1
+        ):
+            neuro_modifier = 0.2
         priority_score = (risk_proba * 70.0) + (vital_score * 20.0) + (critical_score * 10.0)
+        priority_score += neuro_modifier * 100.0 * 0.1
+        if neuro_modifier > 0:
+            priority_score = max(priority_score, 45.0)
         priority_score = round(float(np.clip(priority_score, 0, 100)), 2)
         risk_level = self._risk_level_from_score(priority_score)
 
         if self.department_model is not None:
-            dep_probs = self.department_model.predict_proba(X)[0]
-            dep_idx = int(np.argmax(dep_probs))
-            recommended_department = str(self.department_model.classes_[dep_idx])
-            dep_confidence = float(np.max(dep_probs))
+            try:
+                dep_probs = self.department_model.predict_proba(X)[0]
+                dep_idx = int(np.argmax(dep_probs))
+                recommended_department = str(self.department_model.classes_[dep_idx])
+                dep_confidence = float(np.max(dep_probs))
+            except Exception:
+                self.department_model = None
+                recommended_department = self._fallback_department(row, context)
+                dep_confidence = 0.55
         else:
             recommended_department = self._fallback_department(row, context)
             dep_confidence = 0.55
@@ -173,6 +225,14 @@ class RiskPredictor:
         if context['condition_flags'].get('stroke_history', 0) == 1 and recommended_department in ('General Medicine', 'Gastroenterology'):
             recommended_department = 'Neurology'
             dep_confidence = max(dep_confidence, 0.7)
+        if (
+            row['loss_of_consciousness'] == 1
+            or (row['difficulty_breathing'] == 1 and row['oxygen_saturation'] < 90)
+            or (row['chest_pain'] == 1 and row['systolic_bp'] > 180)
+            or priority_score >= 85
+        ):
+            recommended_department = 'Emergency'
+            dep_confidence = max(dep_confidence, 0.8)
 
         confidence = round(float(np.clip((risk_confidence + dep_confidence) / 2.0, 0, 1)), 3)
 
@@ -191,6 +251,9 @@ class RiskPredictor:
             f"The score combines Random Forest high-risk probability ({risk_proba:.2f}), "
             f"vital abnormality burden, and critical symptom severity."
         )
+        if neuro_modifier > 0:
+            reasoning += " Neurologic risk modifier was applied due to stroke history with active neuro symptoms."
+        recommended_tests = self._recommended_tests_for_department(recommended_department, row)
 
         return {
             'risk_level': risk_level,
@@ -209,7 +272,7 @@ class RiskPredictor:
             'priority_level': risk_level,
             'risk_score': priority_score,
             'reasoning': [reasoning],
-            'recommended_tests': []
+            'recommended_tests': recommended_tests
         }
 
     def predict_risk(self, patient_data):

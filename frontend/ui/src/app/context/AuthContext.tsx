@@ -5,12 +5,14 @@ interface User {
   id: string;
   name: string;
   email?: string;
-  role: 'doctor' | 'nurse' | 'admin' | 'staff';
-  staffId: string;
+  role: 'doctor' | 'nurse' | 'admin' | 'staff' | 'patient';
+  staffId?: string;
+  patientId?: string;
   hospitalId: string;
   department?: string;
   specialization?: string;
   phone?: string;
+  contactNumber?: string;
 }
 
 interface Hospital {
@@ -25,6 +27,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (hospitalId: string, staffId: string, password: string) => Promise<boolean>;
+  patientLogin: (hospitalId: string, patientId: string, contactNumber: string) => Promise<boolean>;
   signup: (payload: SignupPayload) => Promise<boolean>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   refreshUser: () => Promise<void>;
@@ -70,10 +73,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: me.email,
         role: me.role as User['role'],
         staffId: me.staff_id,
+        patientId: me.patient_id,
         hospitalId: me.hospital_id,
         department: me.department,
         specialization: me.specialization,
         phone: me.phone,
+        contactNumber: me.contact_number,
       };
       setUser(appUser);
       localStorage.setItem('user', JSON.stringify(appUser));
@@ -152,6 +157,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const patientLogin = async (
+    hospitalId: string,
+    patientId: string,
+    contactNumber: string
+  ): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await APIClient.post('/auth/patient-login', {
+        hospital_id: hospitalId,
+        patient_id: patientId,
+        contact_number: contactNumber,
+      });
+
+      localStorage.setItem('access_token', response.access_token);
+      const appUser: User = {
+        id: response.user.id,
+        name: response.user.name,
+        role: 'patient',
+        patientId: response.user.patient_id,
+        hospitalId: response.user.hospital_id,
+        contactNumber: response.user.contact_number,
+      };
+      setUser(appUser);
+      localStorage.setItem('user', JSON.stringify(appUser));
+      return true;
+    } catch (err: any) {
+      const errorMessage = err.message || 'Patient login failed';
       setError(errorMessage);
       throw err;
     } finally {
@@ -249,6 +290,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         error,
         login,
+        patientLogin,
         signup,
         changePassword,
         refreshUser,

@@ -32,8 +32,8 @@ export default function ProfilePage() {
                 <Badge className="capitalize">{user.role}</Badge>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Staff ID</p>
-                <p className="font-semibold dark:text-white">{user.staffId}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user.role === 'patient' ? 'Patient ID' : 'Staff ID'}</p>
+                <p className="font-semibold dark:text-white">{user.role === 'patient' ? user.patientId : user.staffId}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Hospital ID</p>
@@ -41,15 +41,15 @@ export default function ProfilePage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Department</p>
-                <p className="font-semibold dark:text-white">{user.department || 'N/A'}</p>
+                <p className="font-semibold dark:text-white">{user.role === 'patient' ? 'N/A' : (user.department || 'N/A')}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Specialization</p>
-                <p className="font-semibold dark:text-white">{user.specialization || 'N/A'}</p>
+                <p className="font-semibold dark:text-white">{user.role === 'patient' ? 'N/A' : (user.specialization || 'N/A')}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                <p className="font-semibold dark:text-white">{user.email || 'N/A'}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user.role === 'patient' ? 'Contact Number' : 'Email'}</p>
+                <p className="font-semibold dark:text-white">{user.role === 'patient' ? (user.contactNumber || 'N/A') : (user.email || 'N/A')}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Phone</p>

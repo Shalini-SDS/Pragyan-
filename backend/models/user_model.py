@@ -44,7 +44,7 @@ class UserSchema(Schema):
     role = fields.Str(
         required=True,
         dump_default="nurse",
-        validate=validate.OneOf(["doctor", "nurse", "admin", "staff"]),
+        validate=validate.OneOf(["doctor", "nurse", "admin", "staff", "patient"]),
         error_messages={"required": "Role is required"}
     )
     specialization = fields.Str(

@@ -6,13 +6,14 @@ Supports login with hospital_id + staff_id, password reset on first login.
 """
 
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from models.user_model import UserSchema
 from database.mongo import (
     get_users_collection,
     get_hospitals_collection,
     get_doctors_collection,
     get_nurses_collection,
+    get_patients_collection,
 )
 from utils.validators import validate_schema
 from datetime import datetime
@@ -100,7 +101,15 @@ def login():
                 return jsonify({
                     "error": "Password reset required",
                     "needs_password_reset": True,
-                    "access_token": create_access_token(identity=str(user['_id'])),
+                    "access_token": create_access_token(
+                        identity=str(user['_id']),
+                        additional_claims={
+                            "role": user.get('role'),
+                            "hospital_id": hospital_id,
+                            "staff_id": user.get('staff_id'),
+                            "name": user.get('name'),
+                        }
+                    ),
                     "user": {
                         "id": str(user['_id']),
                         "name": user.get('name'),
@@ -137,7 +146,12 @@ def login():
         # Create JWT token
         access_token = create_access_token(
             identity=str(user['_id']),
-            additional_claims={"role": user.get('role'), "hospital_id": hospital_id}
+            additional_claims={
+                "role": user.get('role'),
+                "hospital_id": hospital_id,
+                "staff_id": user.get('staff_id'),
+                "name": user.get('name'),
+            }
         )
         
         return jsonify({
@@ -251,7 +265,12 @@ def signup():
 
         access_token = create_access_token(
             identity=str(new_user['_id']),
-            additional_claims={"role": role, "hospital_id": hospital_id}
+            additional_claims={
+                "role": role,
+                "hospital_id": hospital_id,
+                "staff_id": staff_id,
+                "name": name,
+            }
         )
 
         return jsonify({
@@ -339,9 +358,31 @@ def get_current_user():
         JSON: User details
     """
     user_id = get_jwt_identity()
+    claims = get_jwt()
     users_collection = get_users_collection()
+    patients_collection = get_patients_collection()
     
     try:
+        if claims.get("role") == "patient":
+            patient = patients_collection.find_one(
+                {
+                    "hospital_id": claims.get("hospital_id"),
+                    "patient_id": claims.get("patient_id"),
+                    "is_active": True
+                }
+            )
+            if not patient:
+                return jsonify({"error": "Patient not found"}), 404
+            return jsonify({
+                "id": str(patient.get('_id')),
+                "name": patient.get('name'),
+                "role": "patient",
+                "patient_id": patient.get('patient_id'),
+                "hospital_id": patient.get('hospital_id'),
+                "contact_number": patient.get('contact_number'),
+                "is_active": patient.get('is_active', True),
+            }), 200
+
         user = users_collection.find_one(
             {"_id": ObjectId(user_id)},
             {"password": 0}  # Exclude password
@@ -365,3 +406,57 @@ def get_current_user():
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@auth_bp.route('/patient-login', methods=['POST'])
+def patient_login():
+    """
+    Authenticate patients with hospital_id + patient_id + contact_number.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing request body"}), 400
+
+    hospital_id = data.get('hospital_id')
+    patient_id = data.get('patient_id')
+    contact_number = data.get('contact_number')
+
+    if not hospital_id or not patient_id or not contact_number:
+        return jsonify({"error": "Missing hospital_id, patient_id, or contact_number"}), 400
+
+    patients_collection = get_patients_collection()
+    try:
+        patient = patients_collection.find_one({
+            "hospital_id": hospital_id,
+            "patient_id": patient_id,
+            "is_active": True
+        })
+        if not patient:
+            return jsonify({"error": "Invalid hospital_id or patient_id"}), 401
+
+        if str(patient.get('contact_number', '')).strip() != str(contact_number).strip():
+            return jsonify({"error": "Invalid contact number"}), 401
+
+        access_token = create_access_token(
+            identity=str(patient_id),
+            additional_claims={
+                "role": "patient",
+                "hospital_id": hospital_id,
+                "patient_id": patient_id,
+                "name": patient.get('name'),
+            }
+        )
+
+        return jsonify({
+            "access_token": access_token,
+            "user": {
+                "id": str(patient.get('_id')),
+                "name": patient.get('name'),
+                "role": "patient",
+                "patient_id": patient.get('patient_id'),
+                "hospital_id": patient.get('hospital_id'),
+                "contact_number": patient.get('contact_number'),
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Patient login failed: {str(e)}"}), 500

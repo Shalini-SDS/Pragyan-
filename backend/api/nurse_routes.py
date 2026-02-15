@@ -13,7 +13,7 @@ Endpoints:
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt
-from database.mongo import get_nurses_collection
+from database.mongo import get_nurses_collection, get_resource_status_collection, get_doctors_collection
 from models.user_model import NurseSchema
 from datetime import datetime
 
@@ -24,6 +24,11 @@ def get_hospital_from_jwt():
     """Extract hospital_id from JWT claims."""
     claims = get_jwt()
     return claims.get('hospital_id')
+
+
+def get_role_from_jwt():
+    claims = get_jwt()
+    return claims.get('role')
 
 
 @nurse_bp.route('', methods=['GET'])
@@ -235,5 +240,103 @@ def delete_nurse(staff_id):
         
         return jsonify({"message": "Nurse deleted successfully"}), 200
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nurse_bp.route('/resources', methods=['GET'])
+@jwt_required()
+def get_resource_status():
+    """
+    Get hospital resource availability status.
+    Accessible to authenticated staff (doctor/nurse/admin/staff).
+    """
+    try:
+        role = get_role_from_jwt()
+        if role not in {"doctor", "nurse", "admin", "staff"}:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        hospital_id = get_hospital_from_jwt()
+        collection = get_resource_status_collection()
+        doctors_collection = get_doctors_collection()
+
+        resource_doc = collection.find_one({"hospital_id": hospital_id})
+        if not resource_doc:
+            total_doctors = doctors_collection.count_documents({"hospital_id": hospital_id, "is_active": True})
+            resource_doc = {
+                "hospital_id": hospital_id,
+                "resources": {
+                    "doctors": {"available": total_doctors, "total": total_doctors},
+                    "machines": {"available": 0, "total": 0},
+                    "rooms": {"available": 0, "total": 0},
+                },
+                "updated_by": None,
+                "updated_at": datetime.utcnow(),
+                "notes": "",
+            }
+            collection.insert_one(resource_doc.copy())
+            resource_doc = collection.find_one({"hospital_id": hospital_id})
+
+        resource_doc["_id"] = str(resource_doc["_id"])
+        return jsonify(resource_doc), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nurse_bp.route('/resources', methods=['PUT'])
+@jwt_required()
+def upsert_resource_status():
+    """
+    Update hospital resource availability status.
+    Only nurse/admin/staff can update values.
+    """
+    try:
+        role = get_role_from_jwt()
+        if role not in {"nurse", "admin", "staff"}:
+            return jsonify({"error": "Only nurse/admin/staff can update resource status"}), 403
+
+        data = request.get_json() or {}
+        resources = data.get("resources") or {}
+        if not isinstance(resources, dict):
+            return jsonify({"error": "resources must be an object"}), 400
+
+        def _sanitize(bucket):
+            bucket = bucket or {}
+            available = int(bucket.get("available", 0))
+            total = int(bucket.get("total", 0))
+            available = max(0, available)
+            total = max(0, total)
+            if available > total and total > 0:
+                available = total
+            return {"available": available, "total": total}
+
+        payload_resources = {
+            "doctors": _sanitize(resources.get("doctors")),
+            "machines": _sanitize(resources.get("machines")),
+            "rooms": _sanitize(resources.get("rooms")),
+        }
+
+        hospital_id = get_hospital_from_jwt()
+        claims = get_jwt()
+        updater = claims.get("staff_id") or claims.get("name")
+        now = datetime.utcnow()
+
+        collection = get_resource_status_collection()
+        collection.update_one(
+            {"hospital_id": hospital_id},
+            {
+                "$set": {
+                    "resources": payload_resources,
+                    "updated_by": updater,
+                    "updated_at": now,
+                    "notes": data.get("notes", ""),
+                }
+            },
+            upsert=True
+        )
+
+        updated = collection.find_one({"hospital_id": hospital_id})
+        updated["_id"] = str(updated["_id"])
+        return jsonify(updated), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

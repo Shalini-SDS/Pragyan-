@@ -29,6 +29,68 @@ def get_hospital_from_jwt():
     return claims.get('hospital_id')
 
 
+def get_role_from_jwt():
+    claims = get_jwt()
+    return claims.get('role')
+
+
+def _staff_only_guard():
+    if get_role_from_jwt() == "patient":
+        return jsonify({"error": "Patients cannot access this endpoint"}), 403
+    return None
+
+
+@patient_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_my_profile():
+    """
+    Patient self-profile endpoint.
+    """
+    try:
+        if get_role_from_jwt() != "patient":
+            return jsonify({"error": "Only patients can access this endpoint"}), 403
+
+        hospital_id = get_hospital_from_jwt()
+        claims = get_jwt()
+        patient_id = claims.get("patient_id")
+
+        patients_collection = get_patients_collection()
+        patient = patients_collection.find_one({
+            "hospital_id": hospital_id,
+            "patient_id": patient_id,
+            "is_active": True
+        })
+        if not patient:
+            return jsonify({"error": "Patient not found"}), 404
+        patient["_id"] = str(patient["_id"])
+        return jsonify({"patient": patient}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@patient_bp.route('/me/records', methods=['GET'])
+@jwt_required()
+def get_my_records():
+    """
+    Patient self historical records (triages).
+    """
+    try:
+        if get_role_from_jwt() != "patient":
+            return jsonify({"error": "Only patients can access this endpoint"}), 403
+
+        hospital_id = get_hospital_from_jwt()
+        patient_id = get_jwt().get("patient_id")
+        triages_collection = get_triages_collection()
+        triages = list(triages_collection.find(
+            {"hospital_id": hospital_id, "patient_id": patient_id}
+        ).sort("created_at", -1))
+        for triage in triages:
+            triage["_id"] = str(triage["_id"])
+        return jsonify({"triages": triages}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @patient_bp.route('', methods=['GET'])
 @jwt_required()
 def list_patients():
@@ -44,6 +106,9 @@ def list_patients():
         JSON: List of patients with pagination info
     """
     try:
+        guard = _staff_only_guard()
+        if guard:
+            return guard
         hospital_id = get_hospital_from_jwt()
         patients_collection = get_patients_collection()
         
@@ -96,6 +161,9 @@ def create_patient():
         JSON: Created patient data with 201 status
     """
     try:
+        guard = _staff_only_guard()
+        if guard:
+            return guard
         hospital_id = get_hospital_from_jwt()
         data = request.get_json()
         
@@ -146,6 +214,9 @@ def get_patient(patient_id):
         JSON response with error message and 404 status if not found
     """
     try:
+        guard = _staff_only_guard()
+        if guard:
+            return guard
         hospital_id = get_hospital_from_jwt()
         patients_collection = get_patients_collection()
         
@@ -192,6 +263,9 @@ def update_patient(patient_id):
         JSON: Updated patient data
     """
     try:
+        guard = _staff_only_guard()
+        if guard:
+            return guard
         hospital_id = get_hospital_from_jwt()
         data = request.get_json()
         
@@ -239,6 +313,9 @@ def delete_patient(patient_id):
         JSON: Deletion confirmation
     """
     try:
+        guard = _staff_only_guard()
+        if guard:
+            return guard
         hospital_id = get_hospital_from_jwt()
         patients_collection = get_patients_collection()
         

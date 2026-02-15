@@ -72,6 +72,16 @@ def initialize_indexes():
     db.bed_assignments.create_index([("hospital_id", 1)])
     db.bed_assignments.create_index([("patient_id", 1)])
 
+    # Appointments collection
+    db.appointments.create_index([("hospital_id", 1), ("patient_id", 1)])
+    db.appointments.create_index([("hospital_id", 1), ("doctor_staff_id", 1)])
+    db.appointments.create_index([("hospital_id", 1), ("status", 1)])
+    db.appointments.create_index([("created_at", -1)])
+
+    # Nurse resource status collection
+    db.resource_status.create_index([("hospital_id", 1)], unique=True)
+    db.resource_status.create_index([("updated_at", -1)])
+
 
 def get_users_collection():
     """
@@ -159,3 +169,23 @@ def get_bed_assignments_collection():
         Collection: MongoDB bed assignments collection
     """
     return mongo.db.bed_assignments
+
+
+def get_appointments_collection():
+    """
+    Get the appointments collection from MongoDB.
+
+    Returns:
+        Collection: MongoDB appointments collection
+    """
+    return mongo.db.appointments
+
+
+def get_resource_status_collection():
+    """
+    Get the nurse resource status collection from MongoDB.
+
+    Returns:
+        Collection: MongoDB resource_status collection
+    """
+    return mongo.db.resource_status

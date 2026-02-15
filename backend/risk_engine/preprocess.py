@@ -90,6 +90,14 @@ def _parse_systolic_bp(value):
     return int(match.group(1)) if match else 120
 
 
+def _normalize_temperature(value):
+    temp = float(value or 0)
+    # Frontend currently captures Fahrenheit values (e.g., 98.6).
+    if temp > 45:
+        temp = (temp - 32.0) * 5.0 / 9.0
+    return temp
+
+
 def _map_tokens_to_flags(tokens, keyword_map):
     flags = {key: 0 for key in keyword_map}
     unknown = 0
@@ -120,7 +128,7 @@ def build_triage_feature_payload(triage_data):
         'gender_female': 1 if gender == 'female' else 0,
         'systolic_bp': _parse_systolic_bp(triage_data.get('blood_pressure') or triage_data.get('systolic_bp')),
         'heart_rate': int(triage_data.get('heart_rate') or 0),
-        'temperature': float(triage_data.get('temperature') or 0),
+        'temperature': _normalize_temperature(triage_data.get('temperature')),
         'oxygen_saturation': int(triage_data.get('oxygen_saturation') or 0),
         'respiratory_rate': int(triage_data.get('respiratory_rate') or 0),
         'chest_pain': symptom_flags.get('chest_pain', 0),

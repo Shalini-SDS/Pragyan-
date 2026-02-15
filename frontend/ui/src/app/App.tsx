@@ -19,6 +19,10 @@ import TestReportPage from './pages/TestReportPage';
 import NursesPage from './pages/NursesPage';
 import NurseDetailPage from './pages/NurseDetailPage';
 import ProfilePage from './pages/ProfilePage';
+import PatientLoginPage from './pages/PatientLoginPage';
+import PatientPortalPage from './pages/PatientPortalPage';
+import DoctorDashboardPage from './pages/DoctorDashboardPage';
+import NurseOperationsPage from './pages/NurseOperationsPage';
 import { AuthDialog } from './components/AuthDialog';
 import { Activity, Users, Building2, UserCheck, Stethoscope, Moon, Sun, Languages, Heart, User, LogOut, KeyRound } from 'lucide-react';
 import { Button } from './components/ui/button';
@@ -115,13 +119,33 @@ function Navigation() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
-  const navItems = [
+  const staffNavItems = [
     { path: '/triage', label: t('nav.triage'), icon: UserCheck },
     { path: '/hospital-overview', label: t('nav.overview'), icon: Building2 },
     { path: '/doctors', label: t('nav.doctors'), icon: Stethoscope },
     { path: '/nurses', label: t('nav.nurses'), icon: Heart },
     { path: '/patients', label: t('nav.patients'), icon: Users },
   ];
+  const doctorNavItems = [
+    { path: '/doctor-dashboard', label: 'Doctor Dashboard', icon: Stethoscope },
+    ...staffNavItems,
+  ];
+  const patientNavItems = [
+    { path: '/patient-portal', label: 'My Records', icon: Users },
+    { path: '/doctors', label: t('nav.doctors'), icon: Stethoscope },
+  ];
+  const nurseNavItems = [
+    { path: '/nurse-operations', label: 'Nurse Operations', icon: Heart },
+    ...staffNavItems,
+  ];
+  const navItems =
+    user?.role === 'patient'
+      ? patientNavItems
+      : user?.role === 'doctor'
+      ? doctorNavItems
+      : user?.role === 'nurse'
+      ? nurseNavItems
+      : staffNavItems;
 
   const languages: { code: Language; label: string }[] = [
     { code: 'en', label: 'English' },
@@ -223,6 +247,9 @@ function Navigation() {
               <a href="/#about" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.about')}</a>
               <a href="/#ethics" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.ethics')}</a>
               <a href="/#regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.regulations')}</a>
+              <Button size="sm" variant="secondary" onClick={() => { window.location.href = '/patient-login'; }}>
+                Patient Login
+              </Button>
               <Button size="sm" onClick={() => { setAuthMode('login'); setAuthDialogOpen(true); }}>{t('auth.login')}</Button>
               <Button size="sm" variant="outline" onClick={() => { setAuthMode('signup'); setAuthDialogOpen(true); }}>
                 {t('auth.signup')}
@@ -236,34 +263,70 @@ function Navigation() {
   );
 }
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: Array<'doctor' | 'nurse' | 'admin' | 'staff' | 'patient'> }) {
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
+    if (roles && user && !roles.includes(user.role)) {
+      if (user.role === 'patient') {
+        return <Navigate to="/patient-portal" replace />;
+      }
+      if (user.role === 'doctor') {
+        return <Navigate to="/doctor-dashboard" replace />;
+      }
+      if (user.role === 'nurse') {
+        return <Navigate to="/nurse-operations" replace />;
+      }
+      return <Navigate to="/triage" replace />;
+    }
   return <>{children}</>;
 }
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col">
       <Navigation />
       <div className="flex-1">
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Navigate to="/triage" replace /> : <HomePage />} />
+          <Route
+            path="/"
+            element={
+              isAuthenticated
+                ? (
+                  <Navigate
+                    to={
+                      user?.role === 'patient'
+                        ? '/patient-portal'
+                        : user?.role === 'doctor'
+                        ? '/doctor-dashboard'
+                        : user?.role === 'nurse'
+                        ? '/nurse-operations'
+                        : '/triage'
+                    }
+                    replace
+                  />
+                )
+                : <HomePage />
+            }
+          />
           <Route path="/login" element={<Navigate to="/" replace />} />
+          <Route path="/patient-login" element={isAuthenticated ? <Navigate to={user?.role === 'patient' ? '/patient-portal' : '/triage'} replace /> : <PatientLoginPage />} />
 
-          <Route path="/triage" element={<ProtectedRoute><PatientTriagePage /></ProtectedRoute>} />
-          <Route path="/hospital-overview" element={<ProtectedRoute><HospitalOverviewPage /></ProtectedRoute>} />
-          <Route path="/doctors" element={<ProtectedRoute><DoctorsPage /></ProtectedRoute>} />
-          <Route path="/doctors/:id" element={<ProtectedRoute><DoctorDetailPage /></ProtectedRoute>} />
-          <Route path="/nurses" element={<ProtectedRoute><NursesPage /></ProtectedRoute>} />
-          <Route path="/nurses/:id" element={<ProtectedRoute><NurseDetailPage /></ProtectedRoute>} />
-          <Route path="/patients" element={<ProtectedRoute><PatientsPage /></ProtectedRoute>} />
-          <Route path="/patients/:id" element={<ProtectedRoute><PatientDetailPage /></ProtectedRoute>} />
-          <Route path="/patients/:id/test-reports" element={<ProtectedRoute><TestReportPage /></ProtectedRoute>} />
+          <Route path="/triage" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><PatientTriagePage /></ProtectedRoute>} />
+          <Route path="/hospital-overview" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><HospitalOverviewPage /></ProtectedRoute>} />
+          <Route path="/doctors" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff', 'patient']}><DoctorsPage /></ProtectedRoute>} />
+          <Route path="/doctors/:id" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff', 'patient']}><DoctorDetailPage /></ProtectedRoute>} />
+          <Route path="/nurses" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><NursesPage /></ProtectedRoute>} />
+          <Route path="/nurses/:id" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><NurseDetailPage /></ProtectedRoute>} />
+          <Route path="/patients" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><PatientsPage /></ProtectedRoute>} />
+          <Route path="/patients/:id" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><PatientDetailPage /></ProtectedRoute>} />
+          <Route path="/patients/:id/test-reports" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><TestReportPage /></ProtectedRoute>} />
+          <Route path="/doctor-dashboard" element={<ProtectedRoute roles={['doctor']}><DoctorDashboardPage /></ProtectedRoute>} />
+          <Route path="/nurse-operations" element={<ProtectedRoute roles={['nurse', 'admin', 'staff']}><NurseOperationsPage /></ProtectedRoute>} />
+          <Route path="/patient-portal" element={<ProtectedRoute roles={['patient']}><PatientPortalPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
           <Route path="*" element={<Navigate to={isAuthenticated ? '/triage' : '/'} replace />} />

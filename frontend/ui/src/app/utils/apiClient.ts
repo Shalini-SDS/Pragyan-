@@ -37,7 +37,9 @@ export class APIClient {
         const errorData = await response.json().catch(() => ({}));
         const hasToken = !!token;
         const isAuthEndpoint =
-          endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/hospitals');
+          endpoint.startsWith('/auth/login') ||
+          endpoint.startsWith('/auth/patient-login') ||
+          endpoint.startsWith('/auth/hospitals');
         const jwtErrorMessage = String(errorData.msg || errorData.error || '').toLowerCase();
         const tokenLooksInvalid =
           jwtErrorMessage.includes('expired') ||

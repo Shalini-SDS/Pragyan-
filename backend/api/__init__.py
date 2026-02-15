@@ -22,6 +22,7 @@ from api.nurse_routes import nurse_bp
 from api.hospital_routes import hospital_bp
 from api.risk_routes import risk_bp
 from api.triage_routes import triage_bp
+from api.appointment_routes import appointment_bp
 
 # Create the main API blueprint
 api_bp = Blueprint('api', __name__)
@@ -34,3 +35,4 @@ api_bp.register_blueprint(nurse_bp, url_prefix='/nurse')
 api_bp.register_blueprint(hospital_bp, url_prefix='/hospital')
 api_bp.register_blueprint(risk_bp, url_prefix='/risk')
 api_bp.register_blueprint(triage_bp, url_prefix='/triage')
+api_bp.register_blueprint(appointment_bp, url_prefix='/appointment')

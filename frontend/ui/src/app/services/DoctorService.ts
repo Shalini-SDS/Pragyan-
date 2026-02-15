@@ -25,6 +25,13 @@ export class DoctorService {
   }
 
   /**
+   * Get only patients associated with logged-in doctor
+   */
+  static async getMyPatients() {
+    return APIClient.get('/doctor/my-patients');
+  }
+
+  /**
    * Create new doctor
    */
   static async createDoctor(data: Record<string, unknown>) {

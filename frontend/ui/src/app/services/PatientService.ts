@@ -22,6 +22,14 @@ export class PatientService {
     return APIClient.get(`/patient/${patientId}`);
   }
 
+  static async getMyProfile() {
+    return APIClient.get('/patient/me');
+  }
+
+  static async getMyRecords() {
+    return APIClient.get('/patient/me/records');
+  }
+
   /**
    * Create new patient
    */
