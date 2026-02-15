@@ -24,6 +24,7 @@ export interface TriageData {
   previous_conditions?: string[];
   current_medications?: string[];
   notes?: string;
+  ehr_pdf?: File;
 }
 
 export class TriageService {
@@ -48,6 +49,22 @@ export class TriageService {
    * Create new triage assessment
    */
   static async createTriage(data: TriageData) {
+    if (data.ehr_pdf) {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value === undefined || value === null) return;
+        if (key === 'ehr_pdf' && value instanceof File) {
+          formData.append('ehr_pdf', value);
+          return;
+        }
+        if (Array.isArray(value)) {
+          formData.append(key, JSON.stringify(value));
+          return;
+        }
+        formData.append(key, String(value));
+      });
+      return APIClient.postForm('/triage', formData);
+    }
     return APIClient.post('/triage', data);
   }
 

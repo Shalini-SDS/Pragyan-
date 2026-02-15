@@ -21,15 +21,76 @@ from models.user_model import TriageSchema
 from risk_engine.predictor import RiskPredictor
 from datetime import datetime
 from bson.objectid import ObjectId
+from io import BytesIO
+import json
 import uuid
 
 triage_bp = Blueprint('triage', __name__)
+CONDITION_KEYWORDS = {
+    "diabetes": ["diabetes", "diabetic", "dm"],
+    "hypertension": ["hypertension", "high blood pressure", "htn"],
+    "heart disease": ["heart disease", "cad", "coronary artery disease", "mi", "myocardial infarction"],
+    "asthma": ["asthma"],
+    "copd": ["copd", "chronic obstructive pulmonary disease"],
+    "kidney disease": ["kidney disease", "ckd", "chronic kidney disease", "renal failure"],
+    "cancer": ["cancer", "malignancy", "carcinoma"],
+    "stroke": ["stroke", "cva", "cerebrovascular accident"],
+}
 
 
 def get_hospital_from_jwt():
     """Extract hospital_id from JWT claims."""
     claims = get_jwt()
     return claims.get('hospital_id')
+
+
+def _coerce_list_field(raw_value):
+    if raw_value is None:
+        return []
+    if isinstance(raw_value, list):
+        return [str(item).strip() for item in raw_value if str(item).strip()]
+    if isinstance(raw_value, str):
+        text = raw_value.strip()
+        if not text:
+            return []
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return [str(item).strip() for item in parsed if str(item).strip()]
+        except Exception:
+            pass
+        return [item.strip() for item in text.replace(";", ",").split(",") if item.strip()]
+    return [str(raw_value).strip()]
+
+
+def _extract_pdf_text(pdf_bytes):
+    if not pdf_bytes:
+        return ""
+    try:
+        try:
+            from pypdf import PdfReader
+        except Exception:
+            from PyPDF2 import PdfReader  # type: ignore
+        reader = PdfReader(BytesIO(pdf_bytes))
+        chunks = []
+        for page in reader.pages:
+            page_text = page.extract_text() or ""
+            if page_text:
+                chunks.append(page_text)
+        return "\n".join(chunks)
+    except Exception:
+        return ""
+
+
+def _extract_conditions_from_text(text):
+    lowered = (text or "").lower()
+    if not lowered:
+        return []
+    matches = []
+    for canonical, keywords in CONDITION_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            matches.append(canonical)
+    return matches
 
 
 def predict_triage_assessment(triage_data):
@@ -169,10 +230,47 @@ def create_triage():
     try:
         hospital_id = get_hospital_from_jwt()
         user_id = get_jwt_identity()
-        data = request.get_json()
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.form.to_dict()
+            upload = request.files.get('ehr_pdf')
+            if upload and upload.filename:
+                filename = upload.filename
+                if not filename.lower().endswith('.pdf'):
+                    return jsonify({"error": "EHR upload must be a PDF file"}), 400
+
+                pdf_bytes = upload.read()
+                data['ehr_filename'] = filename
+                data['ehr_content_type'] = upload.content_type or 'application/pdf'
+                data['ehr_size_bytes'] = len(pdf_bytes)
+
+                extracted_conditions = _extract_conditions_from_text(_extract_pdf_text(pdf_bytes))
+                if extracted_conditions:
+                    data['ehr_extracted_conditions'] = extracted_conditions
+            else:
+                data['ehr_extracted_conditions'] = []
+        else:
+            data = request.get_json()
         
         if not data:
             return jsonify({"error": "Missing request body"}), 400
+
+        # Normalize list fields for both JSON and multipart payloads.
+        data['symptoms'] = _coerce_list_field(data.get('symptoms'))
+        data['previous_conditions'] = _coerce_list_field(data.get('previous_conditions'))
+        data['current_medications'] = _coerce_list_field(data.get('current_medications'))
+        ehr_conditions = _coerce_list_field(data.get('ehr_extracted_conditions'))
+        if ehr_conditions:
+            combined = data['previous_conditions'] + ehr_conditions
+            deduped = []
+            seen = set()
+            for item in combined:
+                key = item.strip().lower()
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(item)
+            data['previous_conditions'] = deduped
+            data['ehr_extracted_conditions'] = ehr_conditions
 
         # Ensure patient exists / generate patient_id if omitted.
         patient_id = ensure_patient_exists(hospital_id, data)

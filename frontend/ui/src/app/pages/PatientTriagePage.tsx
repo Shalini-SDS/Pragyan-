@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { AlertCircle, CheckCircle, Activity, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Activity, Loader2, Upload, FileText, X } from 'lucide-react';
 import { toast } from 'sonner';
 import TriageService, { TriageData } from '../services/TriageService';
 
@@ -72,6 +72,8 @@ export default function PatientTriagePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [symptomsText, setSymptomsText] = useState('');
   const [conditionsText, setConditionsText] = useState('');
+  const [ehrFile, setEhrFile] = useState<File | null>(null);
+  const [isDraggingEhr, setIsDraggingEhr] = useState(false);
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -117,6 +119,27 @@ export default function PatientTriagePage() {
     });
   };
 
+  const handleEhrFileSelection = (file: File | null) => {
+    if (!file) {
+      setEhrFile(null);
+      return;
+    }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      toast.error('Please upload a PDF file only.');
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error('PDF is too large. Please upload a file up to 10 MB.');
+      return;
+    }
+
+    setEhrFile(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -151,6 +174,7 @@ export default function PatientTriagePage() {
         symptoms: normalizedSymptoms,
         previous_conditions: normalizedConditions,
         severity: parseInt(formData.severity, 10),
+        ehr_pdf: ehrFile || undefined,
       };
 
       const predictions = await TriageService.createTriage(triagePayload);
@@ -342,6 +366,62 @@ export default function PatientTriagePage() {
                     onChange={(e) => handleInputChange('doctorsFollowing', e.target.value)}
                     placeholder="D001, D002"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="ehr-upload">Upload EHR (Optional)</Label>
+                  <div
+                    className={`mt-2 border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                      isDraggingEhr
+                        ? 'border-[#D96C2B] bg-orange-50 dark:bg-orange-900/10'
+                        : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingEhr(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDraggingEhr(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingEhr(false);
+                      handleEhrFileSelection(e.dataTransfer.files?.[0] || null);
+                    }}
+                  >
+                    <input
+                      id="ehr-upload"
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      className="hidden"
+                      onChange={(e) => handleEhrFileSelection(e.target.files?.[0] || null)}
+                    />
+                    <label htmlFor="ehr-upload" className="cursor-pointer block">
+                      <Upload className="w-8 h-8 mx-auto mb-2 text-gray-500" />
+                      <p className="text-sm text-gray-700 dark:text-gray-300">Click to upload or drag and drop</p>
+                      <p className="text-xs text-gray-500 mt-1">PDF only, up to 10 MB</p>
+                    </label>
+                  </div>
+                  {ehrFile && (
+                    <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-950">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-[#D96C2B] flex-shrink-0" />
+                        <span className="text-sm truncate">{ehrFile.name}</span>
+                        <span className="text-xs text-gray-500">
+                          ({(ehrFile.size / (1024 * 1024)).toFixed(2)} MB)
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEhrFile(null)}
+                        aria-label="Remove EHR file"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 

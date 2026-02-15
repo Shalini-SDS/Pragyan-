@@ -18,8 +18,9 @@ export class APIClient {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = localStorage.getItem('access_token');
 
+    const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
     const headers: HeadersInit = {
-      'Content-Type': 'application/json',
+      ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
       ...options.headers,
     };
 
@@ -93,6 +94,17 @@ export class APIClient {
     return this.request(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+    });
+  }
+
+  /**
+   * POST multipart/form-data request
+   */
+  static postForm(endpoint: string, data: FormData) {
+    return this.request(endpoint, {
+      method: 'POST',
+      body: data,
+      headers: {},
     });
   }
 
