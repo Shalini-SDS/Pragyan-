@@ -178,6 +178,11 @@ export default function PatientTriagePage() {
       };
 
       const predictions = await TriageService.createTriage(triagePayload);
+      if (predictions.ehr_processing_note) {
+        toast.info(predictions.ehr_processing_note);
+      } else if (ehrFile && Array.isArray(predictions.ehr_extracted_conditions) && predictions.ehr_extracted_conditions.length > 0) {
+        toast.success(`EHR processed: found ${predictions.ehr_extracted_conditions.length} history item(s).`);
+      }
       const patientId = predictions.patient_id || formData.patientId;
       if (patientId) {
         setFormData((prev) => ({ ...prev, patientId }));

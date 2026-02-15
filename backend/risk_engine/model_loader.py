@@ -23,6 +23,22 @@ class ModelLoader:
     
     # Class variable to cache the loaded model
     _models = {}
+
+    @staticmethod
+    def _resolve_model_path(model_path):
+        """Resolve model path robustly for different working directories."""
+        if os.path.isabs(model_path):
+            return model_path
+        # 1) Current working directory relative path.
+        cwd_path = os.path.abspath(model_path)
+        if os.path.exists(cwd_path):
+            return cwd_path
+        # 2) Backend directory relative path (backend/<model_path>).
+        backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        backend_relative = os.path.abspath(os.path.join(backend_root, model_path))
+        if os.path.exists(backend_relative):
+            return backend_relative
+        return cwd_path
     
     @classmethod
     def get_model(cls, model_type='risk'):
@@ -58,6 +74,7 @@ class ModelLoader:
                     'MODEL_PATH',
                     'models/risk_model.joblib'
                 )
+            model_path = cls._resolve_model_path(model_path)
             
             # Check if file exists
             if not os.path.exists(model_path):

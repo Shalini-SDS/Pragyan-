@@ -168,6 +168,9 @@ class TriageSchema(Schema):
     ehr_content_type = fields.Str(allow_none=True)
     ehr_size_bytes = fields.Int(allow_none=True)
     ehr_extracted_conditions = fields.List(fields.Str(), allow_none=True)
+    ehr_extracted_symptoms = fields.List(fields.Str(), allow_none=True)
+    ehr_extracted_vitals = fields.Dict(allow_none=True)
+    ehr_processing_note = fields.Str(allow_none=True)
     
     # Assessment Results (from ML)
     predicted_department = fields.Str(allow_none=True)

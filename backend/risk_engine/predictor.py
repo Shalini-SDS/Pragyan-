@@ -50,10 +50,27 @@ class RiskPredictor:
         return min(score / 45.0, 1.0)
 
     @staticmethod
+    def _chronic_condition_score(row):
+        score = 0
+        if row.get('heart_disease', 0) == 1:
+            score += 10
+        if row.get('kidney_disease', 0) == 1:
+            score += 8
+        if row.get('diabetes', 0) == 1:
+            score += 6
+        if row.get('hypertension', 0) == 1:
+            score += 5
+        if row.get('cancer', 0) == 1:
+            score += 7
+        if row.get('asthma', 0) == 1:
+            score += 4
+        return min(score / 40.0, 1.0)
+
+    @staticmethod
     def _risk_level_from_score(priority_score):
-        if priority_score >= 70:
+        if priority_score >= 68:
             return 'High'
-        if priority_score >= 40:
+        if priority_score >= 35:
             return 'Medium'
         return 'Low'
 
@@ -190,6 +207,7 @@ class RiskPredictor:
 
         vital_score = self._vital_abnormality_score(row)
         critical_score = self._critical_symptom_score(row)
+        chronic_score = self._chronic_condition_score(row)
         neuro_modifier = 0.0
         # Neurologic acuity boost: stroke history + active neuro symptoms should not be near-zero.
         if context['condition_flags'].get('stroke_history', 0) == 1 and (
@@ -197,10 +215,17 @@ class RiskPredictor:
             or context['symptom_flags'].get('neuro_symptom', 0) == 1
         ):
             neuro_modifier = 0.2
-        priority_score = (risk_proba * 70.0) + (vital_score * 20.0) + (critical_score * 10.0)
+        # Rebalanced blend to reduce "always Medium" behavior and improve spread.
+        priority_score = (risk_proba * 55.0) + (vital_score * 25.0) + (critical_score * 15.0) + (chronic_score * 5.0)
+        if risk_proba < 0.30:
+            priority_score -= 8.0
+        elif risk_proba > 0.75:
+            priority_score += 6.0
         priority_score += neuro_modifier * 100.0 * 0.1
         if neuro_modifier > 0:
             priority_score = max(priority_score, 45.0)
+        if row['loss_of_consciousness'] == 1 or (row['difficulty_breathing'] == 1 and row['oxygen_saturation'] < 90):
+            priority_score = max(priority_score, 78.0)
         priority_score = round(float(np.clip(priority_score, 0, 100)), 2)
         risk_level = self._risk_level_from_score(priority_score)
 
@@ -263,6 +288,7 @@ class RiskPredictor:
             'model_probability_high_risk': round(risk_proba, 4),
             'vital_abnormality_score': round(vital_score, 4),
             'critical_symptom_score': round(critical_score, 4),
+            'chronic_condition_score': round(chronic_score, 4),
             'explainability': {
                 'top_contributing_features': top_features,
                 'reasoning': reasoning

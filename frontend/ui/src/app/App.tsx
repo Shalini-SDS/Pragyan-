@@ -9,6 +9,8 @@ import { Toaster } from './components/ui/sonner';
 import { Footer } from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import HomePage from './pages/HomePage';
+import EthicsSafetyPage from './pages/EthicsSafetyPage';
+import RegulationsPage from './pages/RegulationsPage';
 import PatientTriagePage from './pages/PatientTriagePage';
 import HospitalOverviewPage from './pages/HospitalOverviewPage';
 import DoctorsPage from './pages/DoctorsPage';
@@ -153,6 +155,15 @@ function Navigation() {
     { code: 'ta', label: 'Tamil' },
   ];
 
+  const handlePublicSectionNav = (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+    if (location.pathname !== '/') return;
+    e.preventDefault();
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.history.replaceState(null, '', `/#${sectionId}`);
+  };
+
   return (
     <nav className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4">
@@ -244,9 +255,9 @@ function Navigation() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <a href="/#about" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.about')}</a>
-              <a href="/#ethics" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.ethics')}</a>
-              <a href="/#regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.regulations')}</a>
+              <a href="/#about" onClick={(e) => handlePublicSectionNav(e, 'about')} className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.about')}</a>
+              <Link to="/ethics-safety" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.ethics')}</Link>
+              <Link to="/regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.regulations')}</Link>
               <Button size="sm" variant="secondary" onClick={() => { window.location.href = '/patient-login'; }}>
                 Patient Login
               </Button>
@@ -314,6 +325,8 @@ function AppContent() {
           />
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/patient-login" element={isAuthenticated ? <Navigate to={user?.role === 'patient' ? '/patient-portal' : '/triage'} replace /> : <PatientLoginPage />} />
+          <Route path="/ethics-safety" element={<EthicsSafetyPage />} />
+          <Route path="/regulations" element={<RegulationsPage />} />
 
           <Route path="/triage" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><PatientTriagePage /></ProtectedRoute>} />
           <Route path="/hospital-overview" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><HospitalOverviewPage /></ProtectedRoute>} />

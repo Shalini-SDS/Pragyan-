@@ -132,7 +132,8 @@ def train_models(output_dir='backend/models', num_rows=7000):
 
     # Risk model: binary high-risk probability model (required for score formula).
     # Tuned for better high-risk recall without collapsing precision.
-    y_risk = (df['priority_score'] >= 35).astype(int)
+    # Use a stricter threshold so "high-risk probability" reflects clinically meaningful acuity.
+    y_risk = (df['priority_score'] >= 45).astype(int)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y_risk, test_size=0.2, random_state=42, stratify=y_risk
     )
