@@ -9,9 +9,11 @@ export class PatientService {
   /**
    * Get list of patients
    */
-  static async getPatients(page = 1, limit = 10, search = '') {
+  static async getPatients(page = 1, limit = 10, search = '', filters: { priority?: string; department?: string } = {}) {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.append('search', search);
+    if (filters.priority) params.append('priority', filters.priority);
+    if (filters.department) params.append('department', filters.department);
     return APIClient.get(`/patient?${params.toString()}`);
   }
 

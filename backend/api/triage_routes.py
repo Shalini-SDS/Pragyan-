@@ -264,6 +264,16 @@ def ensure_patient_exists(hospital_id, triage_data):
 
     existing = patients_collection.find_one({"hospital_id": hospital_id, "patient_id": patient_id, "is_active": True})
     if existing:
+        # If triage provided a blood_group, update patient record
+        try:
+            bg = triage_data.get('blood_group') or triage_data.get('blood_type') or triage_data.get('blood_group')
+            if bg:
+                patients_collection.update_one(
+                    {"hospital_id": hospital_id, "patient_id": patient_id},
+                    {"$set": {"blood_group": bg, "updated_at": datetime.utcnow()}}
+                )
+        except Exception:
+            pass
         return patient_id
 
     patient_doc = {
@@ -272,6 +282,7 @@ def ensure_patient_exists(hospital_id, triage_data):
         "name": triage_data.get("name", "Unknown Patient"),
         "age": int(triage_data.get("age") or 0),
         "gender": triage_data.get("gender", "Other"),
+        "blood_group": triage_data.get('blood_group') or triage_data.get('blood_type') or None,
         "contact_number": triage_data.get("contact_number", "N/A"),
         "guardian_name": triage_data.get("guardian_name"),
         "guardian_contact": triage_data.get("guardian_contact"),
@@ -451,9 +462,45 @@ def create_triage():
         data.update(ml_predictions)
         
         triages_collection = get_triages_collection()
+        patients_collection = get_patients_collection()
+
+        # Check for an existing latest triage for this patient
+        existing_triage = triages_collection.find_one(
+            {"hospital_id": hospital_id, "patient_id": patient_id},
+            sort=[("created_at", -1)]
+        )
+
+        if existing_triage:
+            # Save a copy of the existing triage into the patient's triage history
+            try:
+                copy_to_archive = dict(existing_triage)
+                copy_to_archive['_id'] = str(copy_to_archive.get('_id'))
+                patients_collection.update_one(
+                    {"hospital_id": hospital_id, "patient_id": patient_id},
+                    {"$push": {"triage_history": {"triage": copy_to_archive, "archived_at": datetime.utcnow()}}}
+                )
+            except Exception:
+                # If archiving fails, continue but log server-side
+                pass
+
+            # Update the existing triage document instead of inserting a duplicate
+            update_payload = dict(data)
+            update_payload.pop('hospital_id', None)
+            update_payload.pop('created_at', None)
+            update_payload['updated_at'] = datetime.utcnow()
+            triages_collection.update_one(
+                {"_id": existing_triage['_id']},
+                {"$set": update_payload}
+            )
+
+            # Return the updated triage
+            updated = triages_collection.find_one({"_id": existing_triage['_id']})
+            updated['_id'] = str(updated['_id'])
+            return jsonify(updated), 200
+
+        # No existing triage -- insert a new record
         result = triages_collection.insert_one(data)
         data['_id'] = str(result.inserted_id)
-        
         return jsonify(data), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500

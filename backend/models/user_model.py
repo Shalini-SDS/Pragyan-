@@ -126,6 +126,7 @@ class PatientSchema(Schema):
     contact_number = fields.Str(required=True)
     email = fields.Email(allow_none=True)
     address = fields.Str(allow_none=True)
+    blood_group = fields.Str(allow_none=True)
     guardian_name = fields.Str(allow_none=True)
     guardian_contact = fields.Str(allow_none=True)
     medical_history = fields.List(fields.Str(), allow_none=True)
@@ -155,6 +156,7 @@ class TriageSchema(Schema):
     temperature = fields.Float(required=True)
     respiratory_rate = fields.Int(required=True)
     oxygen_saturation = fields.Int(required=True)
+    blood_group = fields.Str(allow_none=True)
     
     # Symptoms
     symptoms = fields.List(fields.Str(), required=True)

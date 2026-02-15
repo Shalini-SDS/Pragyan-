@@ -54,6 +54,7 @@ export default function PatientTriagePage() {
     age: '',
     gender: 'Male' as 'Male' | 'Female' | 'Other',
     contactNumber: '',
+    bloodGroup: '',
     symptoms: [] as string[],
     previousConditions: [] as string[],
     guardianName: '',
@@ -163,6 +164,7 @@ export default function PatientTriagePage() {
         name: formData.name,
         age: parseInt(formData.age, 10) || 0,
         contact_number: formData.contactNumber,
+          blood_group: formData.bloodGroup || undefined,
         guardian_name: formData.guardianName || undefined,
         guardian_contact: formData.guardianContact || undefined,
         blood_pressure: formData.bloodPressure || '120/80',
@@ -286,6 +288,15 @@ export default function PatientTriagePage() {
                       onChange={(e) => handleInputChange('contactNumber', e.target.value)}
                       placeholder="+1-555-0100"
                       required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="bloodGroup">{t('triage.bloodGroup')}</Label>
+                    <Input
+                      id="bloodGroup"
+                      value={formData.bloodGroup}
+                      onChange={(e) => handleInputChange('bloodGroup', e.target.value)}
+                      placeholder="A+, O-, B+"
                     />
                   </div>
                 </div>

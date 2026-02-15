@@ -12,6 +12,20 @@ export default function HomePage() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
 
+  const aboutCards = [
+    { icon: Brain, titleKey: 'home.aboutCards.riskTitle', bodyKey: 'home.aboutCards.riskBody' },
+    { icon: GitBranch, titleKey: 'home.aboutCards.routingTitle', bodyKey: 'home.aboutCards.routingBody' },
+    { icon: HeartPulse, titleKey: 'home.aboutCards.explainTitle', bodyKey: 'home.aboutCards.explainBody' },
+    { icon: BarChart3, titleKey: 'home.aboutCards.opsTitle', bodyKey: 'home.aboutCards.opsBody' },
+  ];
+
+  const featureCards = [
+    { icon: Brain, titleKey: 'home.featureCards.riskTitle', bodyKey: 'home.featureCards.riskBody' },
+    { icon: GitBranch, titleKey: 'home.featureCards.deptTitle', bodyKey: 'home.featureCards.deptBody' },
+    { icon: HeartPulse, titleKey: 'home.featureCards.explainTitle', bodyKey: 'home.featureCards.explainBody' },
+    { icon: BarChart3, titleKey: 'home.featureCards.loadTitle', bodyKey: 'home.featureCards.loadBody' },
+  ];
+
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (!hash) return;
@@ -77,32 +91,15 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="space-y-6 text-base text-gray-700 dark:text-gray-300 leading-8">
             <p>{t('home.aboutBody')}</p>
-            <p>
-              MediTriage combines clinical vitals, symptom severity, and historical context to support faster first-line
-              triage decisions in emergency workflows. It is designed for nurse and doctor teams who need consistent,
-              explainable prioritization during high patient volume.
-            </p>
+            <p>{t('home.aboutDetail')}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="rounded-lg border border-[#E8D5C3] dark:border-gray-700 bg-[#FFF7EF] dark:bg-gray-950 p-4">
-                <Brain className="w-5 h-5 text-[#D96C2B] mb-2" />
-                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Risk Prediction Engine</p>
-                <p className="text-xs mt-1">AI-assisted scoring from symptoms, vitals, and medical history.</p>
-              </div>
-              <div className="rounded-lg border border-[#E8D5C3] dark:border-gray-700 bg-[#FFF7EF] dark:bg-gray-950 p-4">
-                <GitBranch className="w-5 h-5 text-[#D96C2B] mb-2" />
-                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Department Routing</p>
-                <p className="text-xs mt-1">Recommends likely care department with confidence and reasoning.</p>
-              </div>
-              <div className="rounded-lg border border-[#E8D5C3] dark:border-gray-700 bg-[#FFF7EF] dark:bg-gray-950 p-4">
-                <HeartPulse className="w-5 h-5 text-[#D96C2B] mb-2" />
-                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Clinical Explainability</p>
-                <p className="text-xs mt-1">Shows top contributing features to support transparent decisions.</p>
-              </div>
-              <div className="rounded-lg border border-[#E8D5C3] dark:border-gray-700 bg-[#FFF7EF] dark:bg-gray-950 p-4">
-                <BarChart3 className="w-5 h-5 text-[#D96C2B] mb-2" />
-                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">Operational Insight</p>
-                <p className="text-xs mt-1">Supports queue balancing, urgency tracking, and audit readiness.</p>
-              </div>
+              {aboutCards.map((card) => (
+                <div key={card.titleKey} className="rounded-lg border border-[#E8D5C3] dark:border-gray-700 bg-[#FFF7EF] dark:bg-gray-950 p-4">
+                  <card.icon className="w-5 h-5 text-[#D96C2B] mb-2" />
+                  <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{t(card.titleKey)}</p>
+                  <p className="text-xs mt-1">{t(card.bodyKey)}</p>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -128,7 +125,7 @@ export default function HomePage() {
                 animate={{ x: ['-15%', '115%'] }}
                 transition={{ duration: 2.8, repeat: Infinity, ease: 'linear' }}
               />
-              <svg viewBox="0 0 520 150" className="relative w-full" aria-label="Live pulse monitor">
+              <svg viewBox="0 0 520 150" className="relative w-full" aria-label={t('home.pulseAriaLabel')}>
                 <defs>
                   <linearGradient id="pulse-line" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#F2A66F" />
@@ -170,14 +167,14 @@ export default function HomePage() {
                 <Users className="w-4 h-4 text-[#D96C2B] mt-1" />
                 <div>
                   <p className="text-xl font-bold">247</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Patients Triaged Today</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('home.patientsTriagedToday')}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 text-[#3A2E2A] dark:text-gray-100">
                 <Gauge className="w-4 h-4 text-[#D96C2B] mt-1" />
                 <div>
                   <p className="text-xl font-bold">98.6%</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">AI Accuracy Rate</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{t('home.aiAccuracyRate')}</p>
                 </div>
               </div>
             </div>
@@ -188,32 +185,19 @@ export default function HomePage() {
       <section className="bg-[#F2F2F2] dark:bg-gray-900/80 py-16">
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center mb-10">
-            <h2 className="text-4xl font-bold text-[#2E2220] dark:text-gray-100">Intelligent Features</h2>
+            <h2 className="text-4xl font-bold text-[#2E2220] dark:text-gray-100">{t('home.intelligentFeaturesTitle')}</h2>
             <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-              Powered by advanced AI to support healthcare professionals in making life-saving decisions.
+              {t('home.intelligentFeaturesSubtitle')}
             </p>
           </div>
           <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-xl border border-[#E8D5C3] bg-[#ECE5DC] dark:bg-gray-950 dark:border-gray-700 p-4 shadow-sm">
-              <Brain className="w-5 h-5 text-[#D96C2B] mb-2" />
-              <p className="font-semibold text-sm text-[#2E2220] dark:text-gray-100">Risk Prediction Engine</p>
-              <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">Advanced AI algorithms analyze patient vitals and symptoms to predict risk levels with high accuracy.</p>
-            </div>
-            <div className="rounded-xl border border-[#E8D5C3] bg-[#ECE5DC] dark:bg-gray-950 dark:border-gray-700 p-4 shadow-sm">
-              <GitBranch className="w-5 h-5 text-[#D96C2B] mb-2" />
-              <p className="font-semibold text-sm text-[#2E2220] dark:text-gray-100">Department Recommendation</p>
-              <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">Intelligent routing to the appropriate department based on patient condition and hospital capacity.</p>
-            </div>
-            <div className="rounded-xl border border-[#E8D5C3] bg-[#ECE5DC] dark:bg-gray-950 dark:border-gray-700 p-4 shadow-sm">
-              <HeartPulse className="w-5 h-5 text-[#D96C2B] mb-2" />
-              <p className="font-semibold text-sm text-[#2E2220] dark:text-gray-100">Explainable AI</p>
-              <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">Transparent decision-making with clear explanations of contributing factors for every prediction.</p>
-            </div>
-            <div className="rounded-xl border border-[#E8D5C3] bg-[#ECE5DC] dark:bg-gray-950 dark:border-gray-700 p-4 shadow-sm">
-              <BarChart3 className="w-5 h-5 text-[#D96C2B] mb-2" />
-              <p className="font-semibold text-sm text-[#2E2220] dark:text-gray-100">Hospital Load Monitoring</p>
-              <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">Real-time dashboards tracking patient flow, bed distribution, and department utilization.</p>
-            </div>
+            {featureCards.map((card) => (
+              <div key={card.titleKey} className="rounded-xl border border-[#E8D5C3] bg-[#ECE5DC] dark:bg-gray-950 dark:border-gray-700 p-4 shadow-sm">
+                <card.icon className="w-5 h-5 text-[#D96C2B] mb-2" />
+                <p className="font-semibold text-sm text-[#2E2220] dark:text-gray-100">{t(card.titleKey)}</p>
+                <p className="text-xs mt-2 text-gray-700 dark:text-gray-300">{t(card.bodyKey)}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -222,20 +206,20 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-10">
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
             <div>
-              <p className="font-bold text-white">PulsePoint AI</p>
-              <p className="mt-3 text-[#E4D4C8]">Smart triage intelligence for modern healthcare facilities.</p>
+              <p className="font-bold text-white">{t('home.footer.brand')}</p>
+              <p className="mt-3 text-[#E4D4C8]">{t('home.footer.tagline')}</p>
             </div>
             <div>
-              <p className="font-bold text-white">Quick Links</p>
+              <p className="font-bold text-white">{t('home.footer.quickLinks')}</p>
               <div className="mt-3 flex flex-col gap-1">
-                <a href="/#about" className="hover:text-white">About</a>
-                <Link to="/ethics-safety" className="hover:text-white">Ethics &amp; Safety</Link>
-                <Link to="/regulations" className="hover:text-white">Regulations</Link>
+                <a href="/#about" className="hover:text-white">{t('home.footer.link.about')}</a>
+                <Link to="/ethics-safety" className="hover:text-white">{t('home.footer.link.ethics')}</Link>
+                <Link to="/regulations" className="hover:text-white">{t('home.footer.link.regulations')}</Link>
               </div>
             </div>
             <div>
-              <p className="font-bold text-white">Notice</p>
-              <p className="mt-3 text-[#E4D4C8]">This system uses synthetic data for demonstration. Always consult qualified healthcare professionals for medical decisions.</p>
+              <p className="font-bold text-white">{t('home.footer.noticeTitle')}</p>
+              <p className="mt-3 text-[#E4D4C8]">{t('home.footer.noticeBody')}</p>
             </div>
           </div>
         </div>

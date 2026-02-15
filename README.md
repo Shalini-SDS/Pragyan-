@@ -242,3 +242,114 @@ By automating and supporting triage decisions with explainable AI, MediTriage AI
 - Speed up emergency response
 - Reduce clinician workload
 - Improve patient outcomes through better prioritization
+
+---
+
+If you'd like, I can also:
+
+- Add `CONTRIBUTING.md` and CI test instructions
+- Generate a succinct poster pitch or slide deck for the hackathon
+- Produce an architecture diagram (Mermaid) for `docs/`
+
+Please review this `README.md` and tell me any additions or wording changes you'd like.
+
+
+Adjust paths in your local clone if files differ.
+
+## Setup & Run Instructions
+
+Prerequisites:
+
+- Python 3.10+ (recommended)
+- Node 18+ / npm
+- MongoDB (local or Atlas)
+
+Backend (development):
+
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+# create .env as needed (MONGO_URI, JWT_SECRET, STORAGE paths)
+python app.py
+```
+
+Frontend (development):
+
+```bash
+cd frontend/ui
+npm install
+npm run dev
+```
+
+Docker (optional):
+
+- Use the included `docker-compose.yml` in `backend/` to run the API + MongoDB for local testing.
+
+## Model Training & Evaluation
+
+Generate synthetic data and train models locally:
+
+```bash
+cd backend
+# Generate synthetic dataset
+python train_model.py --generate-synthetic
+# Train model
+python train_model.py --train
+```
+
+Trained artifacts will be saved to `backend/models/` as `*.joblib` files. Update the model path in `app.py` or config to load during startup.
+
+Evaluation & explainability:
+
+- Use provided unit tests and scripts in `backend/tests` (if present) to validate model performance and explanation outputs.
+- Consider running SHAP explanations on hold-out samples for clinical review before deployment.
+
+## API Overview
+
+Example endpoints (implementations are in `backend/routes`):
+
+- `POST /api/triage` — submit triage form and receive risk results
+- `GET /api/patient/:id` — fetch patient record and triage history
+- `POST /api/auth/login` — obtain JWT token
+- `POST /api/docs/upload` — upload medical documents (PDF)
+
+Authentication: JWT tokens + RBAC. Roles: `nurse`, `doctor`, `patient`, `admin`.
+
+## Security, Privacy & Ethics
+
+- No real PHI required for training — synthetic data used by default
+- All model outputs are explainable and intended to be decision-support (human-in-the-loop)
+- Store documents encrypted at rest and serve via authenticated endpoints
+- Recommend clinical governance: model validation with clinician stakeholders before live use
+
+## Testing
+
+- Backend tests: run `pytest` in `backend/` if tests are present (`tests_socketio.py` etc.)
+- Frontend tests: unit tests with Jest and E2E with Cypress under `frontend/ui/cypress`
+
+## Future Enhancements
+
+- Integrate hospital EHR (HL7/FHIR) for real patient data ingestion (with strict governance)
+- Add deep learning models for free-text triage (clinical BERT) to boost accuracy
+- Real-time ambulance triage & wearable device integrations
+- Predictive bed & resource availability module
+
+## Contributing
+
+We welcome contributions. Suggested workflow:
+
+1. Fork the repo and create a feature branch
+2. Follow the existing code style and tests
+3. Open a PR with a clear description and associated issue
+
+Optional: Add `CONTRIBUTING.md` with CI rules and commit message conventions.
+
+## Impact
+
+By automating and supporting triage decisions with explainable AI, MediTriage AI aims to:
+
+- Speed up emergency response
+- Reduce clinician workload
+- Improve patient outcomes through better prioritization

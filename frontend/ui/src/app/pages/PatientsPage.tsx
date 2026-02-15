@@ -35,12 +35,14 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('');
 
   useEffect(() => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        const data = await PatientService.getPatients(1, 100);
+        const data = await PatientService.getPatients(1, 100, searchQuery, { priority: priorityFilter || undefined, department: departmentFilter || undefined });
         setPatients(Array.isArray(data) ? data : data.patients || []);
         setError(null);
       } catch (err) {
@@ -53,9 +55,9 @@ export default function PatientsPage() {
     };
 
     fetchPatients();
-  }, []);
+  }, [searchQuery, priorityFilter, departmentFilter]);
 
-  // Filter patients based on search query
+  // Filter patients based on search query (client fallback)
   const filteredPatients = patients.filter((patient) => {
     const query = searchQuery.toLowerCase();
     const fullName = (
@@ -139,16 +141,31 @@ export default function PatientsPage() {
         >
           <Card className="mb-8 shadow-lg dark:bg-gray-900 dark:border-gray-800 hover:shadow-xl transition-shadow">
             <CardContent className="pt-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
-                <Input
-                  type="text"
-                  placeholder={t('patients.searchPlaceholder')}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 py-6 text-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                />
-              </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="relative md:col-span-2">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+                    <Input
+                      type="text"
+                      placeholder={t('patients.searchPlaceholder')}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 py-6 text-lg dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={priorityFilter}
+                      onChange={(e) => setPriorityFilter(e.target.value)}
+                      className="w-full px-3 py-3 rounded border dark:bg-gray-800 dark:border-gray-700"
+                    >
+                      <option value="">All priorities</option>
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </div>
+                </div>
               {searchQuery && (
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -260,13 +277,33 @@ export default function PatientsPage() {
                             </div>
                           )}
 
-                          {/* Status Badge */}
+                          {/* Status & Priority Badge */}
                           <div className="flex items-center justify-between pt-4 border-t dark:border-gray-800">
-                            <Badge 
-                              className={patient.is_active !== false ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700'}
-                            >
-                              {patient.is_active !== false ? t('common.active') : t('common.inactive')}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                className={patient.is_active !== false ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-700'}
+                              >
+                                {patient.is_active !== false ? t('common.active') : t('common.inactive')}
+                              </Badge>
+
+                              {/* Priority tag from latest triage */}
+                              {patient.latest_triage && patient.latest_triage.priority_level && (
+                                (() => {
+                                  const lvl = patient.latest_triage.priority_level;
+                                  const cls = lvl === 'High' ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400 border-red-200' : (lvl === 'Low' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 border-yellow-200');
+                                  return (
+                                    <Badge className={cls + ' text-xs'}>
+                                      {lvl}
+                                    </Badge>
+                                  );
+                                })()
+                              )}
+                            </div>
+
+                            {/* Department */}
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              {patient.latest_triage && patient.latest_triage.predicted_department ? patient.latest_triage.predicted_department : ''}
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

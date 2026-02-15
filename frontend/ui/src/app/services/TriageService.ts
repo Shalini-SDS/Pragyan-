@@ -13,6 +13,7 @@ export interface TriageData {
   guardian_name?: string;
   guardian_contact?: string;
   gender?: 'Male' | 'Female' | 'Other';
+  blood_group?: string;
   blood_pressure: string;
   heart_rate: number;
   temperature: number;

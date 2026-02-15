@@ -25,8 +25,9 @@ import PatientLoginPage from './pages/PatientLoginPage';
 import PatientPortalPage from './pages/PatientPortalPage';
 import DoctorDashboardPage from './pages/DoctorDashboardPage';
 import NurseOperationsPage from './pages/NurseOperationsPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import { AuthDialog } from './components/AuthDialog';
-import { Activity, Users, Building2, UserCheck, Stethoscope, Moon, Sun, Languages, Heart, User, LogOut, KeyRound } from 'lucide-react';
+import { Activity, Users, Building2, UserCheck, Stethoscope, Moon, Sun, Languages, Heart, User, LogOut, KeyRound, Settings2 } from 'lucide-react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
@@ -129,15 +130,19 @@ function Navigation() {
     { path: '/patients', label: t('nav.patients'), icon: Users },
   ];
   const doctorNavItems = [
-    { path: '/doctor-dashboard', label: 'Doctor Dashboard', icon: Stethoscope },
+    { path: '/doctor-dashboard', label: t('nav.doctorDashboard'), icon: Stethoscope },
     ...staffNavItems,
   ];
   const patientNavItems = [
-    { path: '/patient-portal', label: 'My Records', icon: Users },
+    { path: '/patient-portal', label: t('nav.myRecords'), icon: Users },
     { path: '/doctors', label: t('nav.doctors'), icon: Stethoscope },
   ];
   const nurseNavItems = [
     { path: '/nurse-operations', label: 'Nurse Operations', icon: Heart },
+    ...staffNavItems,
+  ];
+  const adminNavItems = [
+    { path: '/admin-dashboard', label: 'Admin Dashboard', icon: Settings2 },
     ...staffNavItems,
   ];
   const navItems =
@@ -147,6 +152,8 @@ function Navigation() {
       ? doctorNavItems
       : user?.role === 'nurse'
       ? nurseNavItems
+      : user?.role === 'admin'
+      ? adminNavItems
       : staffNavItems;
 
   const languages: { code: Language; label: string }[] = [
@@ -168,7 +175,22 @@ function Navigation() {
     <nav className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link to={isAuthenticated ? '/triage' : '/'} className="flex items-center gap-2">
+          <Link
+            to={
+              isAuthenticated
+                ? user?.role === 'patient'
+                  ? '/patient-portal'
+                  : user?.role === 'doctor'
+                  ? '/doctor-dashboard'
+                  : user?.role === 'nurse'
+                  ? '/nurse-operations'
+                  : user?.role === 'admin'
+                  ? '/admin-dashboard'
+                  : '/triage'
+                : '/'
+            }
+            className="flex items-center gap-2"
+          >
             <div className="w-10 h-10 bg-gradient-to-r from-[#D96C2B] to-[#F28C6F] rounded-xl flex items-center justify-center shadow-soft">
               <Activity className="w-6 h-6 text-white" />
             </div>
@@ -289,6 +311,9 @@ function ProtectedRoute({ children, roles }: { children: ReactNode; roles?: Arra
       if (user.role === 'nurse') {
         return <Navigate to="/nurse-operations" replace />;
       }
+      if (user.role === 'admin') {
+        return <Navigate to="/admin-dashboard" replace />;
+      }
       return <Navigate to="/triage" replace />;
     }
   return <>{children}</>;
@@ -315,6 +340,8 @@ function AppContent() {
                         ? '/doctor-dashboard'
                         : user?.role === 'nurse'
                         ? '/nurse-operations'
+                        : user?.role === 'admin'
+                        ? '/admin-dashboard'
                         : '/triage'
                     }
                     replace
@@ -339,6 +366,7 @@ function AppContent() {
           <Route path="/patients/:id/test-reports" element={<ProtectedRoute roles={['doctor', 'nurse', 'admin', 'staff']}><TestReportPage /></ProtectedRoute>} />
           <Route path="/doctor-dashboard" element={<ProtectedRoute roles={['doctor']}><DoctorDashboardPage /></ProtectedRoute>} />
           <Route path="/nurse-operations" element={<ProtectedRoute roles={['nurse', 'admin', 'staff']}><NurseOperationsPage /></ProtectedRoute>} />
+          <Route path="/admin-dashboard" element={<ProtectedRoute roles={['admin']}><AdminDashboardPage /></ProtectedRoute>} />
           <Route path="/patient-portal" element={<ProtectedRoute roles={['patient']}><PatientPortalPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 

@@ -115,6 +115,8 @@ def list_patients():
         page = int(request.args.get('page', 1))
         limit = int(request.args.get('limit', 10))
         search = request.args.get('search', '')
+        priority = request.args.get('priority')  # e.g., Low, Medium, High
+        department = request.args.get('department')
         
         skip = (page - 1) * limit
         
@@ -125,16 +127,57 @@ def list_patients():
                 {"name": {"$regex": search, "$options": "i"}},
                 {"patient_id": {"$regex": search, "$options": "i"}}
             ]
+
+        # If filtering by priority or department, get matching patient_ids from triages collection
+        triages_collection = get_triages_collection()
+        if priority:
+            try:
+                ids = triages_collection.distinct("patient_id", {"hospital_id": hospital_id, "priority_level": priority})
+                if ids:
+                    query["patient_id"] = {"$in": ids}
+                else:
+                    # No matches, return empty set
+                    return jsonify({"patients": [], "pagination": {"page": page, "limit": limit, "total": 0, "pages": 0}}), 200
+            except Exception:
+                pass
+        if department:
+            try:
+                ids = triages_collection.distinct("patient_id", {"hospital_id": hospital_id, "predicted_department": department})
+                if ids:
+                    # if patient_id filter already exists, intersect
+                    if "patient_id" in query and "$in" in query["patient_id"]:
+                        existing_ids = set(query["patient_id"]["$in"]) 
+                        query["patient_id"]["$in"] = list(existing_ids.intersection(set(ids)))
+                        if not query["patient_id"]["$in"]:
+                            return jsonify({"patients": [], "pagination": {"page": page, "limit": limit, "total": 0, "pages": 0}}), 200
+                    else:
+                        query["patient_id"] = {"$in": ids}
+                else:
+                    return jsonify({"patients": [], "pagination": {"page": page, "limit": limit, "total": 0, "pages": 0}}), 200
+            except Exception:
+                pass
         
         # Get total count
         total = patients_collection.count_documents(query)
         
         # Get paginated results
         patients = list(patients_collection.find(query).skip(skip).limit(limit))
-        
-        # Convert ObjectId to string
+
+        # Convert ObjectId to string and attach latest triage summary
         for patient in patients:
             patient['_id'] = str(patient['_id'])
+            try:
+                latest = triages_collection.find_one({"hospital_id": hospital_id, "patient_id": patient.get('patient_id')}, sort=[("created_at", -1)])
+                if latest:
+                    latest_copy = {
+                        "priority_level": latest.get('priority_level'),
+                        "predicted_department": latest.get('predicted_department') or latest.get('recommended_department'),
+                        "priority_score": latest.get('priority_score'),
+                        "updated_at": latest.get('updated_at') or latest.get('created_at')
+                    }
+                    patient['latest_triage'] = latest_copy
+            except Exception:
+                patient['latest_triage'] = None
         
         return jsonify({
             "patients": patients,
