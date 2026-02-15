@@ -280,6 +280,9 @@ function Navigation() {
               <a href="/#about" onClick={(e) => handlePublicSectionNav(e, 'about')} className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.about')}</a>
               <Link to="/ethics-safety" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.ethics')}</Link>
               <Link to="/regulations" className="text-sm text-gray-600 dark:text-gray-300 hover:text-blue-600">{t('nav.regulations')}</Link>
+              <Button variant="outline" size="icon" onClick={toggleTheme} className="dark:border-gray-700">
+                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </Button>
               <Button size="sm" variant="secondary" onClick={() => { window.location.href = '/patient-login'; }}>
                 Patient Login
               </Button>

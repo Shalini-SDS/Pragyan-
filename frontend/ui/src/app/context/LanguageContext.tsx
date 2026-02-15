@@ -377,6 +377,22 @@ const translations: Record<Language, Record<string, string>> = {
     'overview.bed.available': 'Available',
     'overview.bed.low': 'Low',
     'overview.bed.critical': 'Critical',
+    'overview.analytics.riskSummary': 'Risk Summary',
+    'overview.analytics.riskSummaryDesc': 'ML triage risk mix across active patients',
+    'overview.analytics.riskDistribution': 'Risk Distribution',
+    'overview.analytics.departmentInsights': 'Department Insights',
+    'overview.analytics.departmentInsightsDesc': 'ML-based routing pressure and dominant input signals',
+    'overview.analytics.inputVisuals': 'Input Visualizations',
+    'overview.analytics.inputVisualsDesc': 'Most frequent triage inputs and hourly triage load',
+    'overview.analytics.topSymptoms': 'Top Symptoms',
+    'overview.analytics.hourlyLoad': 'Hourly Triage Load',
+    'overview.analytics.topSignal': 'Top signal',
+    'overview.analytics.avgSeverity': 'Avg severity',
+    'overview.analytics.mlCoverage': 'ML-ready cases',
+    'overview.analytics.cases': 'cases',
+    'overview.analytics.noSignal': 'No signal',
+    'overview.analytics.noDepartmentData': 'No department insight data available.',
+    'overview.analytics.noInputSignals': 'No triage input signals available.'
   },
   hi: {
     'nav.home': 'होम',
@@ -913,3 +929,4 @@ export const useLanguage = () => {
   }
   return context;
 };
+

@@ -32,6 +32,23 @@ interface PatientRecord {
   created_at?: string;
 }
 
+interface UploadedHistoryDoc {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+}
+
+interface FacilityConfig {
+  totalBeds: number;
+  occupiedBeds: number;
+  totalIcuBeds: number;
+  occupiedIcuBeds: number;
+  totalMachines: number;
+  availableMachines: number;
+}
+
 export default function PatientDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,6 +57,8 @@ export default function PatientDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [patient, setPatient] = useState<PatientRecord | null>(null);
   const [triages, setTriages] = useState<TriageRecord[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<UploadedHistoryDoc[]>([]);
+  const [facility, setFacility] = useState<FacilityConfig | null>(null);
 
   useEffect(() => {
     const fetchPatient = async () => {
@@ -53,6 +72,11 @@ export default function PatientDetailPage() {
         const data = await PatientService.getPatient(id);
         setPatient(data.patient || null);
         setTriages(Array.isArray(data.recent_triages) ? data.recent_triages : []);
+        const pId = data?.patient?.patient_id || id;
+        const docs = localStorage.getItem(`patient_history_uploads_${pId}`);
+        setUploadedDocs(docs ? JSON.parse(docs) : []);
+        const facilityCfg = localStorage.getItem('admin_facility_config');
+        setFacility(facilityCfg ? JSON.parse(facilityCfg) : null);
         setError(null);
       } catch (err: any) {
         setError(err.message || 'Failed to load patient details');
@@ -82,6 +106,11 @@ export default function PatientDetailPage() {
   };
 
   const latestTriage = triages.length > 0 ? triages[0] : null;
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   if (loading) {
     return (
@@ -264,6 +293,56 @@ export default function PatientDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card className="mb-8 shadow-lg dark:bg-gray-900 dark:border-gray-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Uploaded Historical Documents
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {uploadedDocs.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400">No historical documents uploaded for this patient.</p>
+            ) : (
+              <div className="space-y-3">
+                {uploadedDocs.map((doc) => (
+                  <div key={doc.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="font-semibold dark:text-white">{doc.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {doc.type || '-'} | {formatBytes(doc.size)} | {new Date(doc.uploadedAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {facility && (
+          <Card className="mb-8 shadow-lg dark:bg-gray-900 dark:border-gray-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5" />
+                Hospital Capacity Snapshot
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Beds</p>
+                <p className="font-semibold dark:text-white">{facility.occupiedBeds}/{facility.totalBeds} occupied</p>
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">ICU</p>
+                <p className="font-semibold dark:text-white">{facility.occupiedIcuBeds}/{facility.totalIcuBeds} occupied</p>
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Machines</p>
+                <p className="font-semibold dark:text-white">{facility.availableMachines}/{facility.totalMachines} available</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Link to={`/patients/${patient.patient_id || id}/test-reports`}>
           <Card className="shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-2 border-blue-200 dark:border-blue-800">
