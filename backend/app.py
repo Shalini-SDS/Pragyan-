@@ -174,4 +174,14 @@ def register_error_handlers(app):
 if __name__ == '__main__':
     # Create and run the application
     app = create_app()
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+    # Disable the Werkzeug reloader on Windows to avoid "An operation was attempted
+    # on something that is not a socket" (WinError 10038) caused by the reloader
+    # spawning child threads/processes that interfere with socket selectors.
+    socketio.run(
+        app,
+        debug=True,
+        host='0.0.0.0',
+        port=5000,
+        allow_unsafe_werkzeug=True,
+        use_reloader=False,
+    )

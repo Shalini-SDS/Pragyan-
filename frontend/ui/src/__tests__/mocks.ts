@@ -1,4 +1,4 @@
-import { APIClient } from '../app/services/apiClient';
+import { APIClient } from '../utils/apiClient';
 
 /**
  * Mock utility for API testing
